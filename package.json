@@ -25,6 +25,6 @@
     "rate-limiter-flexible": "^2.1.7",
     "socket.io": "^2.3.0",
     "swagger-ui-express": "^4.1.4",
-    "tsoa": "^3.2.1"
+    "tsoa": "3.2.1"
   }
 }
