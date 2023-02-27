@@ -6,7 +6,7 @@
 let TAG = ' | API | '
 
 const pjson = require('../../package.json');
-const log = require('@bithighlander/loggerdog-client')()
+const log = require('@pioneer-platform/loggerdog\n')()
 const {subscriber, publisher, redis} = require('@pioneer-platform/default-redis')
 
 
