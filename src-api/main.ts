@@ -8,7 +8,7 @@ require('dotenv').config({path:"./../../../../.env"})
 
 const pjson = require('../package.json');
 const TAG = " | "+ pjson.name +" | "
-const log = require('@pioneer-platform/loggerdog')()
+import * as log from '@pioneer-platform/loggerdog'
 const {subscriber, publisher, redis} = require('@pioneer-platform/default-redis')
 var cors = require('cors')
 import * as bodyParser from 'body-parser';

@@ -14,7 +14,7 @@ const TAG = " | Bankless-Backend | "
 const queue = require('@pioneer-platform/redis-queue');
 const uuid = require('short-uuid');
 
-const log = require('@pioneer-platform/loggerdog')()
+import * as log from '@pioneer-platform/loggerdog'
 // const {subscriber, publisher, redis, redisQueue} = require('@pioneer-platform/default-redis')
 // let connection  = require("@pioneer-platform/default-mongo")
 
