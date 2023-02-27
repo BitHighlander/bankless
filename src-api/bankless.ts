@@ -10,8 +10,7 @@
 
 */
 
-
-const TAG = " | Pioneer | "
+const TAG = " | Bankless-Backend | "
 const queue = require('@pioneer-platform/redis-queue');
 const uuid = require('short-uuid');
 
@@ -19,6 +18,23 @@ const log = require('@pioneer-platform/loggerdog')()
 const {subscriber, publisher, redis, redisQueue} = require('@pioneer-platform/default-redis')
 let connection  = require("@pioneer-platform/default-mongo")
 
+//hdwallet-core
+import * as core from "@shapeshiftoss/hdwallet-core";
+// let SDK = require('@pioneer-sdk/sdk')
+// import { NativeAdapter } from '@shapeshiftoss/hdwallet-native'
+//
+// //constants
+// let BLOCKCHAIN = 'cosmos'
+// let ASSET = 'ATOM'
+// let blockchains = [
+//     'ethereum'
+// ]
+//
+// let spec = process.env['URL_PIONEER_SPEC'] || 'https://pioneers.dev/spec/swagger.json'
+// let wss = process.env['URL_PIONEER_SOCKET'] || 'wss://pioneers.dev'
+// let WALLET:any
+// let APP:any
+//
 
 let wait = require('wait-promise');
 let sleep = wait.sleep;

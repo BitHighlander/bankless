@@ -1,5 +1,11 @@
 {
     "compilerOptions": {
+        "target": "ES2016",
+        "lib": ["es2016", "dom", "es5"],
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
+        "composite": true,
         "experimentalDecorators": true,  // this line
         "outDir": "../dist",
         "baseUrl": "tsconfig",
