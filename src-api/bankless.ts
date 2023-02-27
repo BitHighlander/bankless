@@ -19,7 +19,7 @@ const log = require('@pioneer-platform/loggerdog')()
 // let connection  = require("@pioneer-platform/default-mongo")
 
 //hdwallet-core
-import * as core from "@shapeshiftoss/hdwallet-core";
+// import * as core from "@shapeshiftoss/hdwallet-core";
 // let SDK = require('@pioneer-sdk/sdk')
 // import { NativeAdapter } from '@shapeshiftoss/hdwallet-native'
 //np
