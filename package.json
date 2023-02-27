@@ -1,0 +1,26 @@
+{
+  "name": "service-1",
+  "version": "1.0.0",
+  "scripts": {
+    "npm": "npm i",
+    "build:web": "echo lol",
+    "build:routes": "mkdir -p src-api/routes && tsoa routes --configuration tsoa.json",
+    "build:swagger": "mkdir -p api && mkdir -p api/dist && tsoa swagger --configuration tsoa.json",
+    "build:ts": "tsc -p src-api",
+    "build:all": "npm run build:routes && npm run build:swagger && npm run build:ts && npm run build:web",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@pioneer-platform/default-redis": "latest",
+    "@bithighlander/loggerdog-client": "^5.8.0",
+    "@types/node": "^12.12.44",
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "method-override": "^3.0.0",
+    "rate-limiter-flexible": "^2.1.7",
+    "socket.io": "^2.3.0",
+    "swagger-ui-express": "^4.1.4",
+    "tsoa": "^3.2.1"
+  }
+}

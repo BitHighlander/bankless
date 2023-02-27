@@ -1,0 +1,5 @@
+.env
+.idea
+/src-api/routes/*
+# Project exclude paths
+/node_modules/
