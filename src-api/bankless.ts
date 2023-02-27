@@ -15,14 +15,14 @@ const queue = require('@pioneer-platform/redis-queue');
 const uuid = require('short-uuid');
 
 const log = require('@pioneer-platform/loggerdog')()
-const {subscriber, publisher, redis, redisQueue} = require('@pioneer-platform/default-redis')
-let connection  = require("@pioneer-platform/default-mongo")
+// const {subscriber, publisher, redis, redisQueue} = require('@pioneer-platform/default-redis')
+// let connection  = require("@pioneer-platform/default-mongo")
 
 //hdwallet-core
-// import * as core from "@shapeshiftoss/hdwallet-core";
+import * as core from "@shapeshiftoss/hdwallet-core";
 // let SDK = require('@pioneer-sdk/sdk')
 // import { NativeAdapter } from '@shapeshiftoss/hdwallet-native'
-//
+//np
 // //constants
 // let BLOCKCHAIN = 'cosmos'
 // let ASSET = 'ATOM'

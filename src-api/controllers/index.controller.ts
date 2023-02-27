@@ -7,7 +7,7 @@ let TAG = ' | API | '
 
 const pjson = require('../../package.json');
 const log = require('@pioneer-platform/loggerdog\n')()
-const {subscriber, publisher, redis} = require('@pioneer-platform/default-redis')
+// const {subscriber, publisher, redis} = require('@pioneer-platform/default-redis')
 
 
 //rest-ts
@@ -52,13 +52,13 @@ export class IndexController extends Controller {
         let tag = TAG + " | health | "
         try{
 
-            let status:any = await redis.hgetall("info:health")
+            // let status:any = await redis.hgetall("info:health")
 
-            let output:Health = {
+            let output:any = {
                 online:true,
                 name:pjson.name,
                 version:pjson.version,
-                system:status
+                // system:status
             }
 
             return(output)
