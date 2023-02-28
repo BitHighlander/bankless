@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "clean": "rm -R node_modules api dist src-api/routes",
-    "npm": "npm i",
+    "yarn": "yarn",
     "build:web": "echo lol",
     "build:routes": "mkdir -p src-api/routes && tsoa routes --configuration tsoa.json",
     "build:swagger": "mkdir -p api && mkdir -p api/dist && tsoa swagger --configuration tsoa.json",
@@ -23,8 +23,10 @@
     "express": "^4.17.1",
     "method-override": "^3.0.0",
     "rate-limiter-flexible": "^2.1.7",
+    "short-uuid": "^4.2.2",
     "socket.io": "^2.3.0",
     "swagger-ui-express": "^4.1.4",
-    "tsoa": "3.2.1"
+    "tsoa": "3.2.1",
+    "wait-promise": "^0.4.1"
   }
 }
