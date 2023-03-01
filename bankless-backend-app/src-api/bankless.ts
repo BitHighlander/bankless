@@ -13,7 +13,7 @@
 const TAG = " | Bankless-Backend | "
 import * as log from '@pioneer-platform/loggerdog'
 import axios from 'axios';
-
+const SspLib = require('@keepkey/encrypted-smiley-secure-protocol')
 const uuid = require('short-uuid');
 
 let signer = require("eth_mnemonic_signer")
@@ -78,6 +78,97 @@ const Web3 = require("web3")
 let service = "https://mainnet.infura.io/v3/fb05c87983c4431baafd4600fd33de7e"
 let WEB3 = new Web3(new Web3.providers.HttpProvider(service))
 let LUSD_CONTRACT = "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0"
+
+let onStart = async function(){
+    try{
+        const channels = [{ value: 0, country_code: 'XXX' }]
+
+
+        const serialPortConfig = {
+            baudRate: 9600, // default: 9600
+            dataBits: 8, // default: 8
+            stopBits: 2, // default: 2
+            parity: 'none', // default: 'none'
+        }
+
+        const eSSP = new SspLib({
+            id: 0x00,
+            debug: false, // default: false
+            timeout: 3000, // default: 3000
+            encryptAllCommand: true, // default: true
+            fixedKey: '0123456701234567', // default: '0123456701234567'
+        })
+
+        eSSP.on('OPEN', () => {
+            console.log('Port opened!')
+        })
+
+        eSSP.on('CLOSE', () => {
+            console.log('Port closed!')
+        })
+
+        eSSP.on('READ_NOTE', result => {
+            if (result.channel === 0) return
+            console.log('READ_NOTE', result, channels[result.channel])
+
+            if (channels[result.channel].value === 500) {
+                eSSP.command('REJECT_BANKNOTE')
+            }
+        })
+
+        eSSP.on('NOTE_REJECTED', result => {
+            console.log('NOTE_REJECTED', result)
+
+            eSSP.command('LAST_REJECT_CODE').then(result => {
+                console.log(result)
+            })
+        })
+
+        eSSP
+            .open('/dev/ttyUSB0', serialPortConfig)
+            .then(() => eSSP.command('SYNC'))
+            .then(() => eSSP.command('HOST_PROTOCOL_VERSION', { version: 6 }))
+            .then(() => eSSP.initEncryption())
+            .then(() => eSSP.command('GET_SERIAL_NUMBER'))
+            .then(result => {
+                console.log('SERIAL NUMBER:', result.info.serial_number)
+                return
+            })
+            .then(() => eSSP.command('SETUP_REQUEST'))
+            .then(result => {
+                for (let i = 0; i < result.info.channel_value.length; i++) {
+                    channels[i] = {
+                        value: result.info.expanded_channel_value[i],
+                        country_code: result.info.expanded_channel_country_code[i],
+                    }
+                }
+                return
+            })
+            .then(() => eSSP.command('SET_CHANNEL_INHIBITS', {
+                channels: Array(channels.length).fill(1),
+            }))
+            .then(() => eSSP.enable())
+            .then(async () => {
+                console.log('resetting routes')
+                for (const i of [200, 5000, 10000]) {
+                    await eSSP.command('SET_DENOMINATION_ROUTE', {route: 'cashbox', value: i, country_code: 'USD'})
+                }
+                for (const i of [100, 500, 1000, 2000]) {
+                    await eSSP.command('SET_DENOMINATION_ROUTE', {route: 'recycler', value: i, country_code: 'USD'})
+                }
+                console.log('get levels')
+                console.log((await eSSP.command('GET_ALL_LEVELS'))?.info?.counter)
+                console.log('check barcode reader config')
+                console.log(await eSSP.command('GET_BAR_CODE_READER_CONFIGURATION'))
+                console.log('GO!!!')
+            })
+            .catch(error => {
+                console.log(error)
+            })
+    }catch(e){
+        console.error(e)
+    }
+}
 
 
 module.exports = {
