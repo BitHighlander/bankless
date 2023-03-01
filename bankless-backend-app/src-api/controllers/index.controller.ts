@@ -34,6 +34,30 @@ interface BodySend {
     amount:string
 }
 
+interface BodyBuy {
+    address:string
+}
+
+interface BodySell {
+    address:string
+}
+
+interface BodyLPAdd {
+    address:string
+}
+
+interface BodyLPWithdrawl {
+    address:string
+}
+
+interface BodyLPAddAsym {
+    address:string
+}
+
+interface BodyLPWithdrawlAsym {
+    address:string
+}
+
 export class ApiError extends Error {
     private statusCode: number;
     constructor(name: string, statusCode: number, message?: string) {
@@ -157,7 +181,7 @@ export class IndexController extends Controller {
     *
     * */
     @Post('/create/buy')
-    public async createBuy(@Body() body: any): Promise<any> {
+    public async createBuy(@Body() body: BodyBuy): Promise<any> {
         let tag = TAG + " | createBuy | "
         try{
             if(!body.address) throw Error("address is required!")
@@ -183,7 +207,7 @@ export class IndexController extends Controller {
     *
     * */
     @Post('/create/sell')
-    public async createSell(@Body() body: any): Promise<any> {
+    public async createSell(@Body() body: BodySell): Promise<any> {
         let tag = TAG + " | createBuy | "
         try{
             if(!body.address) throw Error("address is required!")
@@ -209,7 +233,7 @@ export class IndexController extends Controller {
     *
     * */
     @Post('/create/lpAdd')
-    public async createLpAdd(@Body() body: any): Promise<any> {
+    public async createLpAdd(@Body() body: BodyLPAdd): Promise<any> {
         let tag = TAG + " | createLpAdd | "
         try{
             if(!body.address) throw Error("address is required!")
@@ -235,7 +259,7 @@ export class IndexController extends Controller {
     *
     * */
     @Post('/create/lpAddAsym')
-    public async createLpAddAsym(@Body() body: any): Promise<any> {
+    public async createLpAddAsym(@Body() body: BodyLPAddAsym): Promise<any> {
         let tag = TAG + " | createLpAddAsym | "
         try{
             if(!body.address) throw Error("address is required!")
@@ -261,7 +285,7 @@ export class IndexController extends Controller {
     *
     * */
     @Post('/create/lpWithdraw')
-    public async createLpWithdraw(@Body() body: any): Promise<any> {
+    public async createLpWithdraw(@Body() body: BodyLPWithdrawl): Promise<any> {
         let tag = TAG + " | createLpWithdraw | "
         try{
             if(!body.address) throw Error("address is required!")
@@ -287,7 +311,7 @@ export class IndexController extends Controller {
     *
     * */
     @Post('/create/lpWithdrawAsym')
-    public async createLpWithdrawAsym(@Body() body: any): Promise<any> {
+    public async createLpWithdrawAsym(@Body() body: BodyLPWithdrawl): Promise<any> {
         let tag = TAG + " | createLpWithdrawAsym | "
         try{
             if(!body.address) throw Error("address is required!")

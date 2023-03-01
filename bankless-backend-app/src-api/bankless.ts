@@ -84,6 +84,9 @@ let eSSP:any
 
 //current session
 let CURRENT_SESSION
+let SESSION_FUNDING_USD = 0
+let SESSION_FUNDING_LUSD = 0
+let SESSION_FULLFILLED = false
 
 let onStart = async function(){
     try{
@@ -132,6 +135,7 @@ let onStart = async function(){
             const channel = channels[result.channel - 1]
             console.log('CREDIT_NOTE', channel)
             publisher.publish(JSON.stringify({amount:channel.value/100,asset:"USD"}))
+            credit_session(channel.value/100,"USD")
         })
 
         ;(async () => {
@@ -230,6 +234,10 @@ module.exports = {
     startSessionLpWithdrawAsym: async function (input:any) {
         return start_session_lp_withdraw_asym(input);
     },
+    //credit session
+    credit: async function (amount:number,asset:string) {
+        return credit_session(amount,asset);
+    },
     //wallet
     address: async function () {
         return signer.getAddress(WALLET_MAIN);
@@ -244,6 +252,43 @@ module.exports = {
     payout: async function (amount:string) {
         return payout_cash(amount);
     },
+    //fullfill
+    fullfill: async function () {
+        return fullfill_order();
+    },
+}
+
+let fullfill_order = async function () {
+    let tag = TAG + " | fullfill_order | "
+    try {
+        if(!CURRENT_SESSION) throw Error("No session to fullfill!")
+        if(CURRENT_SESSION.type === 'buy'){
+            if(SESSION_FUNDING_LUSD === 0) throw Error("No session to fullfill!")
+            let txid = send_to_address(CURRENT_SESSION.address,SESSION_FUNDING_LUSD.toString())
+            CURRENT_SESSION.txid = txid            
+        }
+        return true
+    } catch (e) {
+        console.error(tag, "e: ", e)
+        throw e
+    }
+}
+
+let credit_session = async function (amount:number,asset:string) {
+    let tag = TAG + " | credit_session | "
+    try {
+
+        if(asset === 'USD'){
+            SESSION_FUNDING_USD = SESSION_FUNDING_USD + 1
+        }
+        if(asset === 'USD'){
+            SESSION_FUNDING_LUSD = SESSION_FUNDING_LUSD + 1
+        }
+        return true
+    } catch (e) {
+        console.error(tag, "e: ", e)
+        throw e
+    }
 }
 
 let payout_cash = async function (amount:string) {
@@ -416,17 +461,14 @@ let credit_lusd = async function (amount:number) {
 let get_status = async function () {
     let tag = TAG + " | get_and_rescan_pubkeys | "
     try {
-        //get balance Wallet
-        let balanceLUSD = await axios.get(URL_WALLET+"/balance")
-        console.log(tag,"balanceLUSD: ",balanceLUSD.data)
-
         //
         let output:any = {
             billacceptor:"online",
             hotwallet:"online",
             balanceUSD: 23000, //TODO get this from hardware
             balanceLUSD: 29000, //TODO get this from hotwallet
-            rate: 23000 / 29000
+            rate: 23000 / 29000,
+            session: CURRENT_SESSION
         }
         return output
     } catch (e) {
@@ -453,9 +495,9 @@ let start_session_buy = async function (input) {
         //if buy intake address
         let sessionId = uuid.generate()
         let address = input.address
-        CURRENT_SESSION = {sessionId, address}
+        CURRENT_SESSION = {sessionId, address, type:"buy"}
         //@TODO save to mongo
-        return currentSession
+        return CURRENT_SESSION
     } catch (e) {
         console.error(tag, "e: ", e)
         throw e
