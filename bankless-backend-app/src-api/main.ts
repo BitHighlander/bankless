@@ -8,47 +8,50 @@ require('dotenv').config({path:"./../../../../.env"})
 
 const pjson = require('../package.json');
 const TAG = " | "+ pjson.name +" | "
-import * as log from '@pioneer-platform/loggerdog'
+//import * as log from '@pioneer-platform/loggerdog' @TODO THIS BROKE
+const log = require('@pioneer-platform/loggerdog')
 var cors = require('cors')
 import * as bodyParser from 'body-parser';
 import * as express from 'express';
 import * as methodOverride from 'method-override';
-import { createClient } from 'redis'
-
-
-
 
 const redisHost = process.env.REDIS_HOST ?? undefined
 const redisPort = process.env.REDIS_PORT ?? undefined
+// const redisHost = process.env.REDIS_HOST ?? undefined
+// const redisPort = process.env.REDIS_PORT ?? undefined
+process.env['REDIS_CONNECTION'] = `redis://${redisHost}:${redisPort}`
+const {subscriber, publisher, redis, redisQueue} = require('@pioneer-platform/default-redis')
 
-if(!(redisHost && redisPort)){
-    throw new Error('Must specify REDIS_HOST and REDIS_PORT in .env')
-}
+//@TODO this also broke
+// import { createClient } from 'redis'
+// const redisHost = process.env.REDIS_HOST ?? undefined
+// const redisPort = process.env.REDIS_PORT ?? undefined
+//
+// if(!(redisHost && redisPort)){
+//     throw new Error('Must specify REDIS_HOST and REDIS_PORT in .env')
+// }
+//
+// const client = createClient({
+//     url: `redis://${redisHost}:${redisPort}`
+// })
+//
+// const subscriber = client.duplicate()
+//
+// const defaultListener = (message, channel) => console.log(message, channel)
+//
+// subscriber.subscribe('payments', defaultListener);
 
-const client = createClient({
-    url: `redis://${redisHost}:${redisPort}`
-})
-
-const subscriber = client.duplicate()
-
-const defaultListener = (message, channel) => console.log(message, channel)
-
-subscriber.subscribe('payments', defaultListener);
-subscriber.subscribe('pioneer:transactions:all', defaultListener);
-
+subscriber.subscribe('payments')
 subscriber.on('message', async function (channel, payloadS) {
     let tag = TAG + ' | publishToFront | ';
     try {
-        log.debug(tag,"event: ",payloadS)
+        log.info(tag,"event: ",payloadS)
         //Push event over socket
         if(channel === 'payments'){
             let payload = JSON.parse(payloadS)
             payload.event = 'transaction'
             payloadS = JSON.stringify(payload)
         }
-
-        //legacy hack
-        if(channel === 'payments') channel = 'events'
 
         //
         io.emit(channel, payloadS);
