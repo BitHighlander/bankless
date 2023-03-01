@@ -34,7 +34,7 @@ services:
         # working_dir: ./
         # container_name: redis
         image: redis:latest
-        restart: always
+        restart: on-failure
         ports:
             - '6379:6379'
         command: redis-server --save 20 1 --loglevel warning
