@@ -201,7 +201,7 @@ let onStart = async function(){
         console.error(e)
     }
 }
-// onStart()
+onStart()
 
 module.exports = {
     status: async function () {
