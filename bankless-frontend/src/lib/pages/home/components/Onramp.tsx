@@ -52,12 +52,12 @@ const Onramp = () => {
       const body = {
         address,
       };
-
-      const submitResp = await axios.post(
-          "http://localhost:4000/api/v1/create/buy",
+      console.log("address: ",address)
+      let submitResp = await axios.post(
+          "http://127.0.0.1:4000/api/v1/create/buy",
           body
       );
-
+      submitResp = submitResp.data
       // eslint-disable-next-line no-console
       console.log("submitResp: ", submitResp);
 
@@ -90,7 +90,17 @@ const Onramp = () => {
 
   const onStart = async function () {
     try {
-      //
+      //get last session
+      let status = await axios.get(
+          "http://localhost:4000/api/v1/" + "status"
+      );
+      status = status.data
+      console.log("status: ",status)
+      // @ts-ignore
+      if(status.session){
+        // @ts-ignore
+        setSessionId(status.session.sessionId)
+      }
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error(e);
