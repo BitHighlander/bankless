@@ -152,7 +152,7 @@ export class IndexController extends Controller {
     }
     
     /*
-    * Blocknative TX Simulator
+    * buy lusd
     *
     *
     * */
@@ -164,7 +164,137 @@ export class IndexController extends Controller {
             let input  = {
                 address:body.address
             }
-            let session = await Bankless.startSession(input.address)
+            let session = await Bankless.startSessionBuy(input.address)
+            return session
+        } catch(e){
+            let errorResp:Error = {
+                success:false,
+                tag,
+                e
+            }
+            log.error(tag,"e: ",{errorResp})
+            throw new ApiError("error",503,"error: "+e.toString());
+        }
+    }
+
+    /*
+    * sell lusd
+    *
+    *
+    * */
+    @Post('/create/sell')
+    public async createSell(@Body() body: any): Promise<any> {
+        let tag = TAG + " | createBuy | "
+        try{
+            if(!body.address) throw Error("address is required!")
+            let input  = {
+                address:body.address
+            }
+            let session = await Bankless.startSessionBuy(input.address)
+            return session
+        } catch(e){
+            let errorResp:Error = {
+                success:false,
+                tag,
+                e
+            }
+            log.error(tag,"e: ",{errorResp})
+            throw new ApiError("error",503,"error: "+e.toString());
+        }
+    }
+
+    /*
+    * createLpAdd
+    *
+    *
+    * */
+    @Post('/create/lpAdd')
+    public async createLpAdd(@Body() body: any): Promise<any> {
+        let tag = TAG + " | createLpAdd | "
+        try{
+            if(!body.address) throw Error("address is required!")
+            let input  = {
+                address:body.address
+            }
+            let session = await Bankless.startSessionBuy(input.address)
+            return session
+        } catch(e){
+            let errorResp:Error = {
+                success:false,
+                tag,
+                e
+            }
+            log.error(tag,"e: ",{errorResp})
+            throw new ApiError("error",503,"error: "+e.toString());
+        }
+    }
+
+    /*
+    * createLpAdd
+    *
+    *
+    * */
+    @Post('/create/lpAddAsym')
+    public async createLpAddAsym(@Body() body: any): Promise<any> {
+        let tag = TAG + " | createLpAddAsym | "
+        try{
+            if(!body.address) throw Error("address is required!")
+            let input  = {
+                address:body.address
+            }
+            let session = await Bankless.startSessionBuy(input.address)
+            return session
+        } catch(e){
+            let errorResp:Error = {
+                success:false,
+                tag,
+                e
+            }
+            log.error(tag,"e: ",{errorResp})
+            throw new ApiError("error",503,"error: "+e.toString());
+        }
+    }
+
+    /*
+    * createLpWithdraw
+    *
+    *
+    * */
+    @Post('/create/lpWithdraw')
+    public async createLpWithdraw(@Body() body: any): Promise<any> {
+        let tag = TAG + " | createLpWithdraw | "
+        try{
+            if(!body.address) throw Error("address is required!")
+            let input  = {
+                address:body.address
+            }
+            let session = await Bankless.startSessionBuy(input.address)
+            return session
+        } catch(e){
+            let errorResp:Error = {
+                success:false,
+                tag,
+                e
+            }
+            log.error(tag,"e: ",{errorResp})
+            throw new ApiError("error",503,"error: "+e.toString());
+        }
+    }
+
+    /*
+    * createLpWithdraw
+    *
+    *
+    * */
+    @Post('/create/lpWithdrawAsym')
+    public async createLpWithdrawAsym(@Body() body: any): Promise<any> {
+        let tag = TAG + " | createLpWithdrawAsym | "
+        try{
+            if(!body.address) throw Error("address is required!")
+            let input  = {
+                address:body.address
+            }
+            let session = await Bankless.startSessionBuy(input.address)
             return session
         } catch(e){
             let errorResp:Error = {
