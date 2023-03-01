@@ -9,20 +9,59 @@ require('dotenv').config({path:"./../../../../.env"})
 const pjson = require('../package.json');
 const TAG = " | "+ pjson.name +" | "
 import * as log from '@pioneer-platform/loggerdog'
-const {subscriber, publisher, redis} = require('@pioneer-platform/default-redis')
 var cors = require('cors')
 import * as bodyParser from 'body-parser';
 import * as express from 'express';
 import * as methodOverride from 'method-override';
+import { createClient } from 'redis'
+
+
+const redisHost = process.env.HOST ?? undefined
+const redisPort = process.env.PORT ?? undefined
+
+if(!(redisHost && redisPort)){
+    throw new Error('Must specify Redis host and port in .env')
+}
+
+const client = createClient({
+    url: `redis://${redisHost}:${redisPort}`
+})
+
+const subscriber = client.duplicate()
+
+const defaultListener = (message, channel) => console.log(message, channel)
+
+subscriber.subscribe('payments', defaultListener);
+subscriber.subscribe('pioneer:transactions:all', defaultListener);
+
+subscriber.on('message', async function (channel, payloadS) {
+    let tag = TAG + ' | publishToFront | ';
+    try {
+        log.debug(tag,"event: ",payloadS)
+        //Push event over socket
+        if(channel === 'payments'){
+            let payload = JSON.parse(payloadS)
+            payload.event = 'transaction'
+            payloadS = JSON.stringify(payload)
+        }
+
+        //legacy hack
+        if(channel === 'payments') channel = 'events'
+
+        //
+        io.emit(channel, payloadS);
+
+    } catch (e) {
+        log.error(tag, e);
+        throw e
+    }
+});
 
 // @ts-ignore
 import { RegisterRoutes } from './routes/routes';  // here
 const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require('../api/dist/swagger.json')
 
-//Rate limiter options
-//https://github.com/animir/node-rate-limiter-flexible/wiki/Overall-example#create-simple-rate-limiter-and-consume-points-on-entry-point
-const { RateLimiterRedis } = require('rate-limiter-flexible');
 
 const app = express();
 const server = require('http').Server(app);
@@ -63,32 +102,6 @@ app.use('/spec', express.static('api/dist'));
 
 //REST API v1
 RegisterRoutes(app);  // and here
-
-subscriber.subscribe('payments');
-subscriber.subscribe('pioneer:transactions:all');
-
-subscriber.on('message', async function (channel, payloadS) {
-    let tag = TAG + ' | publishToFront | ';
-    try {
-        log.debug(tag,"event: ",payloadS)
-        //Push event over socket
-        if(channel === 'payments'){
-            let payload = JSON.parse(payloadS)
-            payload.event = 'transaction'
-            payloadS = JSON.stringify(payload)
-        }
-
-        //legacy hack
-        if(channel === 'payments') channel = 'events'
-
-        //
-        io.emit(channel, payloadS);
-
-    } catch (e) {
-        log.error(tag, e);
-        throw e
-    }
-});
 
 
 //Error handeling

@@ -1,0 +1,52 @@
+version: '3.7'
+services:
+    app:
+        # working_dir: ./bankless-backend-app
+        # container_name: app
+        restart: always
+        build:
+            context: ./bankless-backend-app
+            dockerfile: ./Dockerfile
+        env_file: ./bankless-backend-app/.env
+        ports:
+            - '4000:4000'
+        links:
+            - mongodb
+        depends_on:
+            - mongodb
+            - redis
+        environment:
+            WAIT_HOSTS: mongodb:27017, redis:6379
+        networks:
+            - bankless-backend-network
+    mongodb:
+        # working_dir: ./
+        # container_name: mongodb
+        image: mongo:latest
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: banklessbackend
+            MONGO_INITDB_ROOT_PASSWORD: password
+        ports:
+            - '27017:27017'
+        volumes:
+            - persist:/data/db
+    redis:
+        # working_dir: ./
+        # container_name: redis
+        image: redis:latest
+        restart: always
+        ports:
+            - '6379:6379'
+        command: redis-server --save 20 1 --loglevel warning
+        volumes:
+            - cache:/data
+
+networks:
+    bankless-backend-network:
+        driver: bridge
+
+volumes:
+    cache:
+        driver: local
+    persist:
+        driver: local
