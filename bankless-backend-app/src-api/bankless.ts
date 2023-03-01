@@ -11,10 +11,10 @@
 */
 
 const TAG = " | Bankless-Backend | "
-import * as log from '@pioneer-platform/loggerdog'
 import axios from 'axios';
 const SspLib = require('@keepkey/encrypted-smiley-secure-protocol')
 const uuid = require('short-uuid');
+const log = require('@pioneer-platform/loggerdog')();
 
 let signer = require("eth_mnemonic_signer")
 
@@ -203,69 +203,82 @@ module.exports = {
 let send_to_address = async function (address:string,amount:string) {
     let tag = TAG + " | send_to_address | "
     try {
-        // let value = parseInt(amount/Math.pow(10, prescision))
-        //
-        // //web3 get nonce
-        // let nonce = await web3.eth.getTransactionCount(address)
-        // nonce = web3.utils.toHex(nonce)
-        // //console.log("nonce: ",nonce)
-        //
-        // //get gas price
-        // let gasPrice = await web3.eth.getGasPrice()
-        // gasPrice = web3.utils.toHex(gasPrice)
-        // console.log("gasPrice: ",gasPrice)
-        //
-        // //get gas limit
-        // let gasLimit
-        //
-        // //get balance
-        // let balance = await web3.eth.getBalance(address)
-        // console.log("balance: ",balance)
-        //
-        // //get token data
-        // let tokenData = await WEB3.eth.abi.encodeFunctionCall({
-        //     name: 'transfer',
-        //     type: 'function',
-        //     inputs: [
-        //         {
-        //             type: 'address',
-        //             name: '_to'
-        //         },
-        //         {
-        //             type: 'uint256',
-        //             name: '_value'
-        //         }
-        //     ]
-        // }, [toAddress, value])
-        //
-        // //get gas limit
-        // try{
-        //     gasLimit = await web3.eth.estimateGas({
-        //         to: address,
-        //         value: value,
-        //         data: tokenData
-        //     })
-        //     gasLimit = web3.utils.toHex(gasLimit + 941000) // Add 21000 gas to cover the size of the data payload
-        // }catch(e){
-        //     console.error("failed to get ESTIMATE GAS: ",e)
-        //     gasLimit = web3.utils.toHex(30000 + 41000)
-        // }
-        //
-        //
-        // //sign
-        // input = {
-        //     nonce,
-        //     gasPrice,
-        //     gas:gasLimit,
-        //     value: "0x0",
-        //     "from": address,
-        //     "to": contract,
-        //     "data": tokenData,
-        //     chainId,
-        // }
+        log.info(tag,"address:",address)
+        log.info(tag,"amount:",amount)
+        // @ts-ignore
+        let value = parseInt(amount * Math.pow(10, 18)).toString()
+        log.info(tag,"value:",value)
+        let addressFrom = await signer.getAddress(WALLET_MAIN)
+        //web3 get nonce
+        let nonce = await WEB3.eth.getTransactionCount(addressFrom)
+        // nonce = nonce + 3
+        console.log("nonce: ",nonce)
+        nonce = WEB3.utils.toHex(nonce)
 
 
-        return {txid:"fakeTxidBro"}
+        //get gas price
+        let gasPrice = await WEB3.eth.getGasPrice()
+        console.log("gasPrice: ",gasPrice)
+        gasPrice = WEB3.utils.toHex(gasPrice)
+
+
+        //get gas limit
+        let gasLimit
+
+        //get balance
+        let balance = await WEB3.eth.getBalance(address)
+        console.log("balance: ",balance)
+
+        //get token data
+        let tokenData = await WEB3.eth.abi.encodeFunctionCall({
+            name: 'transfer',
+            type: 'function',
+            inputs: [
+                {
+                    type: 'address',
+                    name: '_to'
+                },
+                {
+                    type: 'uint256',
+                    name: '_value'
+                }
+            ]
+        }, [address, value])
+
+        //get gas limit
+        try{
+            gasLimit = await WEB3.eth.estimateGas({
+                to: address,
+                value: value,
+                data: tokenData
+            })
+            gasLimit = WEB3.utils.toHex(gasLimit + 121000) // Add 21000 gas to cover the size of the data payload
+        }catch(e){
+            console.error("failed to get ESTIMATE GAS: ",e)
+            gasLimit = WEB3.utils.toHex(30000)
+        }
+
+
+        //sign
+        let input = {
+            nonce,
+            gasPrice,
+            gasLimit:gasLimit,
+            value: "0x0",
+            "from": addressFrom,
+            "to": LUSD_CONTRACT,
+            "data": tokenData,
+            chainId:1,
+        }
+        log.info("input: ",input)
+        //signer
+        let result = await signer.signTx(input, WALLET_MAIN)
+        log.info("result: ",result)
+
+        //broadcast
+        const txHash = await WEB3.eth.sendSignedTransaction(result);
+
+        return txHash.transactionHash
     } catch (e) {
         console.error(tag, "e: ", e)
         throw e
@@ -274,7 +287,7 @@ let send_to_address = async function (address:string,amount:string) {
 
 
 let get_balance = async function () {
-    let tag = TAG + " | credit_usd | "
+    let tag = TAG + " | get_balance | "
     try {
         let minABI = [
             // balanceOf
@@ -294,11 +307,13 @@ let get_balance = async function () {
                 "type":"function"
             }
         ];
-        let address = signer.getAddress(WALLET_MAIN)
+        let address = await signer.getAddress(WALLET_MAIN)
+        console.log("address: ",address)
         const newContract = new WEB3.eth.Contract(minABI, LUSD_CONTRACT);
         const decimals = await newContract.methods.decimals().call();
+        console.log("decimals: ",decimals)
         const balanceBN = await newContract.methods.balanceOf(address).call()
-        //console.log("input: balanceBN: ",balanceBN)
+        console.log("input: balanceBN: ",balanceBN)
         // @ts-ignore
         let tokenBalance = parseInt(balanceBN/Math.pow(10, decimals))
         return tokenBalance

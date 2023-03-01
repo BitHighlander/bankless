@@ -1,0 +1,11 @@
+{
+  "name": "bankless",
+  "version": "1.0.0",
+  "scripts": {
+    "clean": "rm -R node_modules api dist src-api/routes",
+    "yarn": "yarn",
+    "start-backend": "cd bankless-backend-app && yarn "
+  },
+  "dependencies": {
+  }
+}

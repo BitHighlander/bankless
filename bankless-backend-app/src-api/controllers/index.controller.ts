@@ -29,6 +29,11 @@ interface Health {
     system:any
 }
 
+interface BodySend {
+    address:string
+    amount:string
+}
+
 export class ApiError extends Error {
     private statusCode: number;
     constructor(name: string, statusCode: number, message?: string) {
@@ -99,12 +104,60 @@ export class IndexController extends Controller {
     }
 
     /*
+    address endpoint
+    
+    */
+
+    @Get('/address')
+    public async address() {
+        let tag = TAG + " | address | "
+        try{
+
+            let output:any = Bankless.address()
+
+            return(output)
+        }catch(e){
+            let errorResp:Error = {
+                success:false,
+                tag,
+                e
+            }
+            log.error(tag,"e: ",{errorResp})
+            throw new ApiError("error",503,"error: "+e.toString());
+        }
+    }
+
+    /*
+        balance endpoint
+    
+    */
+
+    @Get('/balance')
+    public async balance() {
+        let tag = TAG + " | address | "
+        try{
+
+            let output:any = Bankless.balance()
+
+            return(output)
+        }catch(e){
+            let errorResp:Error = {
+                success:false,
+                tag,
+                e
+            }
+            log.error(tag,"e: ",{errorResp})
+            throw new ApiError("error",503,"error: "+e.toString());
+        }
+    }
+    
+    /*
     * Blocknative TX Simulator
     *
     *
     * */
-    @Post('create/buy')
-    public async createBuy(@Header('Authorization') authorization: string, @Body() body: any): Promise<any> {
+    @Post('/create/buy')
+    public async createBuy(@Body() body: any): Promise<any> {
         let tag = TAG + " | createBuy | "
         try{
             if(!body.address) throw Error("address is required!")
@@ -125,58 +178,12 @@ export class IndexController extends Controller {
     }
 
     /*
-    * @TODO REMOVEME (this should be done via hardware!
-    *
-    *
-    * */
-    @Post('credit/usd')
-    public async creditUSD(@Header('Authorization') authorization: string, @Body() body: any): Promise<any> {
-        let tag = TAG + " | creditUSD | "
-        try{
-            if(!body.amount) throw Error("address is required!")
-            let session = await Bankless.creditUSD(body.amount)
-            return session
-        } catch(e){
-            let errorResp:Error = {
-                success:false,
-                tag,
-                e
-            }
-            log.error(tag,"e: ",{errorResp})
-            throw new ApiError("error",503,"error: "+e.toString());
-        }
-    }
-
-    /*
-    * @TODO REMOVEME (this should be done via HOTWALLET!
-    *
-    *
-    * */
-    @Post('credit/lusd')
-    public async creditLUSD(@Header('Authorization') authorization: string, @Body() body: any): Promise<any> {
-        let tag = TAG + " | creditLUSD | "
-        try{
-            if(!body.amount) throw Error("amount is required!")
-            let session = await Bankless.creditLUSD(body.amount)
-            return session
-        } catch(e){
-            let errorResp:Error = {
-                success:false,
-                tag,
-                e
-            }
-            log.error(tag,"e: ",{errorResp})
-            throw new ApiError("error",503,"error: "+e.toString());
-        }
-    }
-
-    /*
     *  Fullfillment
     *  Completes the order
     *  Tell the atm the user is done in the funding stage
     * */
-    @Post('fullfill')
-    public async fullfill(@Header('Authorization') authorization: string, @Body() body: any): Promise<any> {
+    @Post('/fullfill')
+    public async fullfill(@Body() body: any): Promise<any> {
         let tag = TAG + " | fullfill | "
         try{
             if(!body.sessionId) throw Error("amount is required!")
@@ -192,5 +199,4 @@ export class IndexController extends Controller {
             throw new ApiError("error",503,"error: "+e.toString());
         }
     }
-
 }
