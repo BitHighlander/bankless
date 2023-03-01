@@ -1,4 +1,4 @@
-FROM node:latest
+FROM node:18
 
 RUN mkdir -p /home/app
 
@@ -7,13 +7,13 @@ WORKDIR /home/app
 COPY api/dist ./api/dist
 COPY dist ./dist
 
+
+COPY .env .
 COPY package.json .
 COPY tsoa.json .
-COPY .env .
+
 
 RUN yarn install --frozen-lockfile --production
-
-# RUN yarn build:all
 
 EXPOSE 4000
 

@@ -16,11 +16,13 @@ import * as methodOverride from 'method-override';
 import { createClient } from 'redis'
 
 
-const redisHost = process.env.HOST ?? undefined
-const redisPort = process.env.PORT ?? undefined
+
+
+const redisHost = process.env.REDIS_HOST ?? undefined
+const redisPort = process.env.REDIS_PORT ?? undefined
 
 if(!(redisHost && redisPort)){
-    throw new Error('Must specify Redis host and port in .env')
+    throw new Error('Must specify REDIS_HOST and REDIS_PORT in .env')
 }
 
 const client = createClient({
