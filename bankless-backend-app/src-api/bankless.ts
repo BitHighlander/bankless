@@ -79,8 +79,11 @@ let service = "https://mainnet.infura.io/v3/fb05c87983c4431baafd4600fd33de7e"
 let WEB3 = new Web3(new Web3.providers.HttpProvider(service))
 let LUSD_CONTRACT = "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0"
 
-//
+//bill acceptor
 let eSSP:any
+
+//current session
+let CURRENT_SESSION
 
 let onStart = async function(){
     try{
@@ -194,7 +197,7 @@ let onStart = async function(){
         console.error(e)
     }
 }
-onStart()
+// onStart()
 
 module.exports = {
     status: async function () {
@@ -209,8 +212,23 @@ module.exports = {
     poolInfo: async function () {
         return get_pool_info();
     },
-    startSession: async function (input:any) {
-        return start_session(input);
+    startSessionBuy: async function (input:any) {
+        return start_session_buy(input);
+    },
+    startSessionSell: async function (input:any) {
+        return start_session_buy(input);
+    },
+    startSessionLpAdd: async function (input:any) {
+        return start_session_lp_add(input);
+    },
+    startSessionLpWithdraw: async function (input:any) {
+        return start_session_lp_withdraw(input);
+    },
+    startSessionLpAddAsy: async function (input:any) {
+        return start_session_lp_add_asym(input);
+    },
+    startSessionLpWithdrawAsym: async function (input:any) {
+        return start_session_lp_withdraw_asym(input);
     },
     //wallet
     address: async function () {
@@ -428,14 +446,97 @@ let get_pool_info = async function () {
     }
 }
 
-let start_session = async function (input) {
-    let tag = TAG + " | deposit_fiat | "
+let start_session_buy = async function (input) {
+    let tag = TAG + " | start_session_buy | "
+    try {
+        if(CURRENT_SESSION) throw Error("session already started!")
+        //if buy intake address
+        let sessionId = uuid.generate()
+        let address = input.address
+        CURRENT_SESSION = {sessionId, address}
+        //@TODO save to mongo
+        return currentSession
+    } catch (e) {
+        console.error(tag, "e: ", e)
+        throw e
+    }
+}
+
+let start_session_sell = async function (input) {
+    let tag = TAG + " | start_session_sell | "
     try {
         //if buy intake address
-        let sessionId = uuid.v4()
+        let sessionId = uuid.generate()
         let address = input.address
         currentSession = {sessionId, address}
         return currentSession
+    } catch (e) {
+        console.error(tag, "e: ", e)
+        throw e
+    }
+}
+
+let start_session_lp_add = async function (input) {
+    let tag = TAG + " | start_session_lp | "
+    try {
+        //if buy intake address
+        let sessionId = uuid.generate()
+        let address = input.address
+        currentSession = {sessionId, address}
+        return currentSession
+    } catch (e) {
+        console.error(tag, "e: ", e)
+        throw e
+    }
+}
+
+let start_session_lp_add_asym = async function (input) {
+    let tag = TAG + " | start_session_lp | "
+    try {
+        //if buy intake address
+        let sessionId = uuid.generate()
+        let address = input.address
+        currentSession = {sessionId, address}
+        return currentSession
+    } catch (e) {
+        console.error(tag, "e: ", e)
+        throw e
+    }
+}
+
+let start_session_lp_withdraw = async function (input) {
+    let tag = TAG + " | start_session_lp_withdraw | "
+    try {
+        //if buy intake address
+        let sessionId = uuid.generate()
+        let address = input.address
+        currentSession = {sessionId, address}
+        return currentSession
+    } catch (e) {
+        console.error(tag, "e: ", e)
+        throw e
+    }
+}
+
+let start_session_lp_withdraw_asym = async function (input) {
+    let tag = TAG + " | start_session_lp_withdraw_asym | "
+    try {
+        //if buy intake address
+        let sessionId = uuid.generate()
+        let address = input.address
+        currentSession = {sessionId, address}
+        return currentSession
+    } catch (e) {
+        console.error(tag, "e: ", e)
+        throw e
+    }
+}
+
+let fullfill_order = async function () {
+    let tag = TAG + " | deposit_fiat | "
+    try {
+        CURRENT_SESSION = null
+
     } catch (e) {
         console.error(tag, "e: ", e)
         throw e

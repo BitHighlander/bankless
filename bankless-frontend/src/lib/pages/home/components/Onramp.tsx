@@ -16,7 +16,7 @@ const socket = io();
 const Onramp = () => {
   const [isConnected, setIsConnected] = useState(socket.connected);
   const [lastPong, setLastPong] = useState(null);
-  const [sessionInit, setSessionInit] = React.useState(false);
+  const [sessionId, setSessionId] = React.useState(false);
   // const [sessionInit, setSessionInit] = React.useState(false);
   const [address, setAddress] = React.useState("");
   const handleInputChangeAddress = (e: any) => setAddress(e.target.value);
@@ -47,18 +47,21 @@ const Onramp = () => {
 
   const onSubmit = async function () {
     try {
+
       //
-      setSessionInit(true);
       const body = {
         address,
       };
 
       const submitResp = await axios.post(
-        "http://localhost:4000/api/v1/status",
-        body
+          "http://localhost:4000/api/v1/create/buy",
+          body
       );
+
       // eslint-disable-next-line no-console
       console.log("submitResp: ", submitResp);
+
+      setSessionId(true);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error(e);
@@ -104,9 +107,9 @@ const Onramp = () => {
   return (
     <Grid textAlign="center" gap={2}>
       OnRamp to LUSD
-      {sessionInit ? (
+      {sessionId ? (
         <div>
-          session {} (awaiting deposit....)
+          sessionId {sessionId} (awaiting deposit....)
           <div>
             <p>Connected: {`${isConnected}`}</p>
             <p>Last pong: {lastPong || "-"}</p>
