@@ -9,7 +9,6 @@ const pjson = require('../../package.json');
 import * as log from '@pioneer-platform/loggerdog'
 // const {subscriber, publisher, redis} = require('@pioneer-platform/default-redis')
 
-
 let Bankless = require("../bankless")
 
 //rest-ts
