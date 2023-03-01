@@ -1,14 +1,17 @@
 version: '3.7'
 services:
-    app:
-        build: ./bankless-backend-app
+    backend:
+        build: ./backend
         restart: on-failure
-        env_file: ./bankless-backend-app/.env
+        env_file: ./backend/.env
         environment:
             WAIT_HOSTS: mongodb:27017, redis:6379
+        devices:
+            - "/dev/ttyUSB0:/dev/ttyUSB0"
+            - "/dev/ttyACM0:/dev/ttyACM0"
         networks:
             - default
-            - bankless-backend-network
+            - backend
         ports:
             - '4000:4000/tcp'
         links:
@@ -26,7 +29,7 @@ services:
         volumes:
             - persist:/data/db
         networks:
-            - bankless-backend-network
+            - backend
         ports:
             - '27017:27017/tcp'
     redis:
@@ -36,11 +39,11 @@ services:
         volumes:
             - cache:/data
         networks:
-            - bankless-backend-network
+            - backend
         ports:
             - '6379:6379/tcp'
     frontend:
-        build: ./bankless-frontend
+        build: ./frontend
         restart: on-failure
         networks:
             - default
@@ -57,7 +60,7 @@ services:
           start_period: 600s
 
 networks:
-    bankless-backend-network:
+    backend:
         driver: bridge
 
 volumes:
