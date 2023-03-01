@@ -267,6 +267,8 @@ let fullfill_order = async function () {
             let txid = send_to_address(CURRENT_SESSION.address,SESSION_FUNDING_LUSD.toString())
             CURRENT_SESSION.txid = txid            
         }
+        //TODO current session
+        CURRENT_SESSION = null
         return true
     } catch (e) {
         console.error(tag, "e: ", e)
@@ -568,17 +570,6 @@ let start_session_lp_withdraw_asym = async function (input) {
         let address = input.address
         currentSession = {sessionId, address}
         return currentSession
-    } catch (e) {
-        console.error(tag, "e: ", e)
-        throw e
-    }
-}
-
-let fullfill_order = async function () {
-    let tag = TAG + " | deposit_fiat | "
-    try {
-        CURRENT_SESSION = null
-
     } catch (e) {
         console.error(tag, "e: ", e)
         throw e
