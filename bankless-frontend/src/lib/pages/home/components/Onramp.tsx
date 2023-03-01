@@ -91,6 +91,22 @@ const Onramp = () => {
     try {
       // eslint-disable-next-line no-console
       console.log("onDone: ");
+      
+      //fullfill
+      //
+      const body = {
+        address,
+        sessionId
+      };
+      console.log("address: ",address)
+      let submitResp = await axios.post(
+          "http://127.0.0.1:4000/api/v1/fullfill",
+          body
+      );
+      submitResp = submitResp.data
+      // eslint-disable-next-line no-console
+      console.log("submitResp: ", submitResp);
+      
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error(e);
@@ -130,7 +146,6 @@ const Onramp = () => {
         <div>
           sessionId {sessionId} (awaiting deposit....)
           <div>
-            <p>Connected: {`${isConnected}`}</p>
             <p>Last pong: {lastPong || "-"}</p>
             <p>USD: {usd || "0"}</p>
             <button onClick={sendPing}>Send ping</button>

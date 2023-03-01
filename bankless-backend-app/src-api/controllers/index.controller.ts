@@ -341,7 +341,7 @@ export class IndexController extends Controller {
         let tag = TAG + " | fullfill | "
         try{
             if(!body.sessionId) throw Error("amount is required!")
-            let session = await Bankless.fullfill()
+            let session = await Bankless.fullfill(body.sessionId)
             return session
         } catch(e){
             let errorResp:Error = {
