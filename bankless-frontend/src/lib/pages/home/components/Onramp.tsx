@@ -146,9 +146,7 @@ const Onramp = () => {
         <div>
           sessionId {sessionId} (awaiting deposit....)
           <div>
-            <p>Last pong: {lastPong || "-"}</p>
             <p>USD: {usd || "0"}</p>
-            <button onClick={sendPing}>Send ping</button>
           </div>
           <Button
             mt={4}

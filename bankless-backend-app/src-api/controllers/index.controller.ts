@@ -34,9 +34,15 @@ interface BodySend {
     amount:string
 }
 
+interface BodyFund {
+    amount:string,
+    asset:string
+}
+
 interface BodyBuy {
     address:string
 }
+
 
 interface BodySell {
     address:string
@@ -165,6 +171,34 @@ export class IndexController extends Controller {
 
             return(output)
         }catch(e){
+            let errorResp:Error = {
+                success:false,
+                tag,
+                e
+            }
+            log.error(tag,"e: ",{errorResp})
+            throw new ApiError("error",503,"error: "+e.toString());
+        }
+    }
+
+    /*
+    * HACK DEPOSIT
+    *
+    *
+    * */
+    @Post('/hack/fund')
+    public async fundSession(@Body() body: BodyFund): Promise<any> {
+        let tag = TAG + " | createBuy | "
+        try{
+            if(!body.amount) throw Error("missing amount!")
+            if(!body.asset) throw Error("missing asset!")
+            let input  = {
+                amount:body.amount,
+                asset:body.asset
+            }
+            let session = await Bankless.credit(input.amount,input.amount)
+            return session
+        } catch(e){
             let errorResp:Error = {
                 success:false,
                 tag,

@@ -137,71 +137,71 @@ let onStart = async function(){
             publisher.publish(JSON.stringify({amount:channel.value/100,asset:"USD"}))
             credit_session(channel.value/100,"USD")
         })
+        
+        
+        await eSSP.open('/dev/ttyUSB0', serialPortConfig)
+        await eSSP.command('SYNC')
+        await eSSP.command('HOST_PROTOCOL_VERSION', { version: 6 })
+        console.log('disabling payin')
+        await eSSP.disable()
 
-        ;(async () => {
-            await eSSP.open('/dev/ttyUSB0', serialPortConfig)
-            await eSSP.command('SYNC')
-            await eSSP.command('HOST_PROTOCOL_VERSION', { version: 6 })
-            console.log('disabling payin')
-            await eSSP.disable()
+        console.log('encryption init')
+        await eSSP.initEncryption()
+        console.log('SERIAL NUMBER:', (await eSSP.command('GET_SERIAL_NUMBER'))?.info?.serial_number)
 
-            console.log('encryption init')
-            await eSSP.initEncryption()
-            console.log('SERIAL NUMBER:', (await eSSP.command('GET_SERIAL_NUMBER'))?.info?.serial_number)
-
-            const setup_result = await eSSP.command('SETUP_REQUEST')
-            for (let i = 0; i < setup_result.info.channel_value.length; i++) {
-                channels[i] = {
-                    value: setup_result.info.expanded_channel_value[i] * setup_result.info.real_value_multiplier,
-                    country_code: setup_result.info.expanded_channel_country_code[i],
-                }
+        const setup_result = await eSSP.command('SETUP_REQUEST')
+        for (let i = 0; i < setup_result.info.channel_value.length; i++) {
+            channels[i] = {
+                value: setup_result.info.expanded_channel_value[i] * setup_result.info.real_value_multiplier,
+                country_code: setup_result.info.expanded_channel_country_code[i],
             }
+        }
 
-            console.log('set channel inhibits')
-            await eSSP.command('SET_CHANNEL_INHIBITS', {
-                channels: Array(channels.length).fill(1),
-            })
+        console.log('set channel inhibits')
+        await eSSP.command('SET_CHANNEL_INHIBITS', {
+            channels: Array(channels.length).fill(1),
+        })
 
-            console.log('resetting routes')
-            const payoutDenoms = [100, 500, 1000, 2000]
-            for (let i = 0; i < channels.length; i++) {
-                const channel = channels[i]
-                // TODO: country code check
-                if (!payoutDenoms.includes(channel.value)) {
-                    await eSSP.command('SET_DENOMINATION_ROUTE', {route: 'cashbox', value: channel.value, country_code: channel.country_code})
-                }
+        console.log('resetting routes')
+        const payoutDenoms = [100, 500, 1000, 2000]
+        for (let i = 0; i < channels.length; i++) {
+            const channel = channels[i]
+            // TODO: country code check
+            if (!payoutDenoms.includes(channel.value)) {
+                await eSSP.command('SET_DENOMINATION_ROUTE', {route: 'cashbox', value: channel.value, country_code: channel.country_code})
             }
-            for (let i = 0; i < channels.length; i++) {
-                const channel = channels[i]
-                // TODO: country code check
-                if (payoutDenoms.includes(channel.value)) {
-                    await eSSP.command('SET_DENOMINATION_ROUTE', {route: 'payout', value: channel.value, country_code: channel.country_code})
-                }
+        }
+        for (let i = 0; i < channels.length; i++) {
+            const channel = channels[i]
+            // TODO: country code check
+            if (payoutDenoms.includes(channel.value)) {
+                await eSSP.command('SET_DENOMINATION_ROUTE', {route: 'payout', value: channel.value, country_code: channel.country_code})
             }
+        }
 
-            console.log('checking routes')
-            for (const channel of channels) {
-                console.log(channel, (await eSSP.command('GET_DENOMINATION_ROUTE', {value: channel.value, country_code: channel.country_code}))?.info)
-            }
+        console.log('checking routes')
+        for (const channel of channels) {
+            console.log(channel, (await eSSP.command('GET_DENOMINATION_ROUTE', {value: channel.value, country_code: channel.country_code}))?.info)
+        }
 
-            console.log('enable refill mode')
-            await eSSP.command('SET_REFILL_MODE', { mode: 'on' })
+        console.log('enable refill mode')
+        await eSSP.command('SET_REFILL_MODE', { mode: 'on' })
 
-            console.log('enable payin')
-            await eSSP.enable()
+        console.log('enable payin')
+        await eSSP.enable()
 
-            console.log('enable payout')
-            await eSSP.command('ENABLE_PAYOUT_DEVICE', {REQUIRE_FULL_STARTUP: false, GIVE_VALUE_ON_STORED: true})
+        console.log('enable payout')
+        await eSSP.command('ENABLE_PAYOUT_DEVICE', {REQUIRE_FULL_STARTUP: false, GIVE_VALUE_ON_STORED: true})
 
-            console.log('get levels')
-            const levels = (await eSSP.command('GET_ALL_LEVELS'))?.info?.counter;
-            console.log(levels)
-        })()
+        console.log('get levels')
+        const levels = (await eSSP.command('GET_ALL_LEVELS'))?.info?.counter;
+        console.log(levels)
+
     }catch(e){
         console.error(e)
     }
 }
-//onStart()
+onStart()
 
 module.exports = {
     status: async function () {
@@ -464,8 +464,8 @@ let get_status = async function () {
     let tag = TAG + " | get_and_rescan_pubkeys | "
     try {
         //
-        CURRENT_SESSION.SESSION_FUNDING_USD = SESSION_FUNDING_USD
-        CURRENT_SESSION.SESSION_FUNDING_LUSD = SESSION_FUNDING_LUSD
+        if(CURRENT_SESSION) CURRENT_SESSION.SESSION_FUNDING_USD = SESSION_FUNDING_USD
+        if(CURRENT_SESSION) CURRENT_SESSION.SESSION_FUNDING_LUSD = SESSION_FUNDING_LUSD
         let output:any = {
             billacceptor:"online",
             hotwallet:"online",
