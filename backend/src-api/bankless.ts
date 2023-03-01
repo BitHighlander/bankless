@@ -201,7 +201,7 @@ let onStart = async function(){
         console.error(e)
     }
 }
-// onStart()
+//onStart()
 
 module.exports = {
     status: async function () {
@@ -464,6 +464,8 @@ let get_status = async function () {
     let tag = TAG + " | get_and_rescan_pubkeys | "
     try {
         //
+        CURRENT_SESSION.SESSION_FUNDING_USD = SESSION_FUNDING_USD
+        CURRENT_SESSION.SESSION_FUNDING_LUSD = SESSION_FUNDING_LUSD
         let output:any = {
             billacceptor:"online",
             hotwallet:"online",

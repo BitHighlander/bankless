@@ -17,6 +17,7 @@ const Onramp = () => {
   const [isConnected, setIsConnected] = useState(socket.connected);
   const [lastPong, setLastPong] = useState(null);
   const [sessionId, setSessionId] = React.useState(false);
+  const [usd, setUsd] = React.useState(0);
   // const [sessionInit, setSessionInit] = React.useState(false);
   const [address, setAddress] = React.useState("");
   const handleInputChangeAddress = (e: any) => setAddress(e.target.value);
@@ -71,6 +72,14 @@ const Onramp = () => {
   const onCheckDollars = async function () {
     try {
       // eslint-disable-next-line no-console
+      //get last session
+      let status = await axios.get(
+          "http://localhost:4000/api/v1/" + "status"
+      );
+      status = status.data
+      console.log("status: ",status)
+      // @ts-ignore
+      setUsd(status.session.SESSION_FUNDING_USD)
       console.log("onCheckDollars: ");
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -82,6 +91,22 @@ const Onramp = () => {
     try {
       // eslint-disable-next-line no-console
       console.log("onDone: ");
+      
+      //fullfill
+      //
+      const body = {
+        address,
+        sessionId
+      };
+      console.log("address: ",address)
+      let submitResp = await axios.post(
+          "http://127.0.0.1:4000/api/v1/fullfill",
+          body
+      );
+      submitResp = submitResp.data
+      // eslint-disable-next-line no-console
+      console.log("submitResp: ", submitResp);
+      
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error(e);
@@ -121,8 +146,8 @@ const Onramp = () => {
         <div>
           sessionId {sessionId} (awaiting deposit....)
           <div>
-            <p>Connected: {`${isConnected}`}</p>
             <p>Last pong: {lastPong || "-"}</p>
+            <p>USD: {usd || "0"}</p>
             <button onClick={sendPing}>Send ping</button>
           </div>
           <Button
