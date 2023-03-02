@@ -141,9 +141,9 @@ let onStart = async function(){
         })
         
         
-        //await eSSP.open('/dev/ttyUSB0', serialPortConfig)
+        await eSSP.open('/dev/ttyUSB0', serialPortConfig)
         ///dev/tty.usbserial-AQ031MU7
-        await eSSP.open('/dev/tty.usbserial-AQ031MU7', serialPortConfig)
+        // await eSSP.open('/dev/tty.usbserial-AQ031MU7', serialPortConfig)
         await eSSP.command('SYNC')
         await eSSP.command('HOST_PROTOCOL_VERSION', { version: 6 })
         console.log('disabling payin')
