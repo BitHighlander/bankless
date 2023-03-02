@@ -5,19 +5,17 @@ services:
         restart: on-failure
         env_file: ./backend/.env
         environment:
+            REDIS_HOST: redis
+            REDIS_PORT: 6379
             WAIT_HOSTS: mongodb:27017, redis:6379
         devices:
             - "/dev/ttyUSB0:/dev/ttyUSB0"
-            - "/dev/ttyACM0:/dev/ttyACM0"
         networks:
             - default
             - backend
         ports:
             - '4000:4000/tcp'
         links:
-            - mongodb
-            - redis
-        depends_on:
             - mongodb
             - redis
     mongodb:
@@ -50,7 +48,6 @@ services:
         ports:
             - '80:4173/tcp'
         healthcheck:
-          #test: ["CMD", "curl", "-f", "http://localhost:4173"]
           test:
            - CMD-SHELL
            - '[ "$(curl -sf http://localhost:4173 | wc -c)" -ge 100 ] || exit 1'
