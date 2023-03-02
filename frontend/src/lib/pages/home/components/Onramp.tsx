@@ -11,6 +11,12 @@ import axios from "axios";
 import React, { useEffect, useState } from "react";
 import io from "socket.io-client";
 import { Spinner } from '@chakra-ui/react'
+// @ts-ignore
+import EthereumQRPlugin from "@dri/ethereum-qr-code";
+import {set} from "husky";
+import { QrReader } from 'react-qr-reader';
+// later in code
+const qr = new EthereumQRPlugin();
 
 const socket = io("ws://127.0.0.1:4000");
 
@@ -25,6 +31,20 @@ const Onramp = () => {
   // const [sessionInit, setSessionInit] = React.useState(false);
   const [address, setAddress] = React.useState("");
   const handleInputChangeAddress = (e: any) => setAddress(e.target.value);
+
+  const handleError = (error) => {
+    console.error(error);
+  }
+
+  const handleScan = (data) => {
+    if (data) {
+      console.log(data)
+      console.log(data.text)
+      const paymentParams = qr.readStringToJSON(data.text);
+      const scannedAddress = paymentParams.to;
+      setAddress(scannedAddress);
+    }
+  };
 
   useEffect(() => {
     socket.on("connect", () => {
@@ -210,6 +230,11 @@ const Onramp = () => {
             >
               Continue
             </Button>
+            <QrReader
+                delay={300}
+                onError={handleError}
+                onResult={handleScan}
+                style={{ width: "100%" }}></QrReader>
           </FormControl>
         </div>
       )}

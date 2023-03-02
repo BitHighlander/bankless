@@ -1,13 +1,47 @@
 import {
   Grid,
+  Box,
+    Button
 } from "@chakra-ui/react";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import "../../../styles/ButtonContainer.css";
+import axios from "axios";
+import EthereumQRPlugin from "@dri/ethereum-qr-code";
+// later in code
+const qr = new EthereumQRPlugin();
 
 const Buy = () => {
+  const [availableFives, setAvailableFives] = useState(0);
+  const [availableTens, setAvailableTens] = useState(0);
+  const [availableTwenties, setAvailableTwenties] = useState(0);
+  const [availableFifties, setAvailableFifties] = useState(0);
+  const [availableHundreds, setAvailableHundreds] = useState(0);
+  const [selectedFives, setselectedFives] = useState(0);
+  const [selectedTens, setselectedTens] = useState(0);
+  const [selectedTwenties, setselectedTwenties] = useState(0);
+  const [selectedFifties, setselectedFifties] = useState(0);
+  const [selectedHundreds, setselectedHundreds] = useState(0);
+  const [totalSelected, setTotalSelected] = useState(0);
+  const [readyForDeposit, setReadyForDeposit] = useState(false);
+  const [address, setAddress] = useState("");
+    const [qrcode, setQrcode] = useState({});
 
-  const onStart = async function () {
+  const tallySelected = async function () {
     try {
+        //go to API get this data
+        let allBills = {
+            "5": selectedFives,
+            "10":  selectedTens,
+            "20":  selectedTwenties,
+            "50":  selectedFifties,
+            "100":  selectedHundreds
+        }
+
+        let totalSelected = 0;
+        Object.keys(allBills).forEach(key => {
+            totalSelected = totalSelected + (key * allBills[key]);
+        });
+        setTotalSelected(totalSelected);
 
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -15,18 +49,127 @@ const Buy = () => {
     }
   };
 
-  // onstart get data
-  useEffect(() => {
-    onStart();
-  }, []);
+    const onSubmit = async function () {
+        try {
+            setReadyForDeposit(true)
+
+            let address = await axios.get(
+                "http://localhost:4000/api/v1/" + "Address"
+            );
+            address = address.data
+            console.log("address: ",address)
+            setAddress(address)
+
+            //make payment string
+            const paymentParams = {
+                to:address,
+                amount:totalSelected,
+                gas: 21000,
+            }
+            const qrCode = qr.toCanvas(paymentParams, {
+                selector: '#my-qr-code',
+            })
+            setQrcode(qrCode)
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error(e);
+        }
+    };
+
+  // // onstart get data
+  // useEffect(() => {
+  //   onStart();
+  // }, []);
+
+    const onClickFives = async function () {
+        try {
+            let selectedFivesNew = selectedFives + 1;
+            setselectedFives(selectedFivesNew)
+            tallySelected()
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error(e);
+        }
+    };
+
+    const onClickTens = async function () {
+        try {
+            let selectedTensNew = selectedTens + 1;
+            setselectedTens(selectedTensNew)
+            tallySelected()
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error(e);
+        }
+    };
+
+    const onClickTwenties = async function () {
+        try {
+            let selectedTwentiesNew = selectedTwenties + 1;
+            setselectedTwenties(selectedTwentiesNew)
+            tallySelected()
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error(e);
+        }
+    };
+
+    const onClickFifties = async function () {
+        try {
+            let selectedFiftiesNew = selectedFifties + 1;
+            setselectedFifties(selectedFiftiesNew)
+            tallySelected()
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error(e);
+        }
+    };
+
+    const onClickHundreds = async function () {
+        try {
+            let selectedHundredsNew = selectedHundreds + 1;
+            setselectedHundreds(selectedHundredsNew)
+            tallySelected()
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error(e);
+        }
+    };
 
   return (
-      <div className="button-container">
-          <button className="button">$5</button>
-          <button className="button">$10</button>
-          <button className="button">$20</button>
-          <button className="button">$50</button>
-          <button className="button">$100</button>
+      <div>
+          {readyForDeposit ? (<div>
+              PayMeBitch {address}
+              {/*{qrcode}*/}
+          </div>) : (<div style={{ paddingTop: '50px' }} className="button-container">
+              <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
+                  <button onClick={onClickFives} className="button">$5</button> <span className="small-text">available: {availableFives} selected {selectedFives}</span>
+              </Box>
+              <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
+                  <button onClick={onClickTens} className="button">$10</button> <span className="small-text">available: {availableTens} selected {selectedTens}</span>
+              </Box>
+              <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
+                  <button onClick={onClickTwenties} className="button">$20</button> <span className="small-text">available: {availableTwenties} selected {selectedTwenties}</span>
+              </Box>
+              <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
+                  <button onClick={onClickFifties} className="button">$50</button> <span className="small-text">available: {availableFifties} selected {selectedFifties}</span>
+              </Box>
+              <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
+                  <button onClick={onClickHundreds} className="button">$100</button> <span className="small-text">available: {availableHundreds} selected {selectedHundreds}</span>
+              </Box>
+              <div className="total-container">
+                  <p>Total amount selected: ${totalSelected}</p>
+              </div>
+              <Button
+                  mt={4}
+                  colorScheme='teal'
+                  //isLoading={props.isSubmitting}
+                  type='submit'
+                  onClick={onSubmit}
+              >
+                  Deposit
+              </Button>
+          </div>)}
       </div>
   );
 };
