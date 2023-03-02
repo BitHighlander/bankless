@@ -134,14 +134,16 @@ let onStart = async function(){
             if (result.channel === 0) return
             const channel = channels[result.channel - 1]
             console.log('CREDIT_NOTE', channel)
-            publisher.publish(JSON.stringify({amount:channel.value/100,asset:"USD"}))
+            publisher.publish("payments",JSON.stringify({amount:channel.value/100,asset:"USD"}))
             let amount = (parseInt(channel.value)/100).toString()
             console.log('credit amount: ', amount)
             credit_session(amount,"USD")
         })
         
         
-        await eSSP.open('/dev/ttyUSB0', serialPortConfig)
+        //await eSSP.open('/dev/ttyUSB0', serialPortConfig)
+        ///dev/tty.usbserial-AQ031MU7
+        await eSSP.open('/dev/tty.usbserial-AQ031MU7', serialPortConfig)
         await eSSP.command('SYNC')
         await eSSP.command('HOST_PROTOCOL_VERSION', { version: 6 })
         console.log('disabling payin')
