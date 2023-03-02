@@ -261,31 +261,32 @@ module.exports = {
 let fullfill_order = async function () {
     let tag = TAG + " | fullfill_order | "
     try {
+        log.info("CURRENT_SESSION: ",CURRENT_SESSION)
         if(!CURRENT_SESSION) throw Error("No session to fullfill!")
         if(CURRENT_SESSION.type === 'buy'){
-            if(SESSION_FUNDING_LUSD === 0) throw Error("No session to fullfill!")
-            let txid = send_to_address(CURRENT_SESSION.address,SESSION_FUNDING_LUSD.toString())
-            CURRENT_SESSION.txid = txid            
+            if(SESSION_FUNDING_USD === 0) throw Error("No session to fullfill!")
+            let txid = await send_to_address(CURRENT_SESSION.address,SESSION_FUNDING_USD.toString())
+            CURRENT_SESSION.txid = txid
+            return txid
         }
-        //TODO current session
         CURRENT_SESSION = null
-        return true
     } catch (e) {
         console.error(tag, "e: ", e)
         throw e
     }
 }
 
-let credit_session = async function (amount:number,asset:string) {
+let credit_session = async function (amount:any,asset:string) {
     let tag = TAG + " | credit_session | "
     try {
-
+        log.info(amount, asset)
         if(asset === 'USD'){
-            SESSION_FUNDING_USD = SESSION_FUNDING_USD + 1
+            SESSION_FUNDING_USD = SESSION_FUNDING_USD + parseInt(amount)
         }
-        if(asset === 'USD'){
-            SESSION_FUNDING_LUSD = SESSION_FUNDING_LUSD + 1
+        if(asset === 'LUSD'){
+            SESSION_FUNDING_LUSD = SESSION_FUNDING_LUSD + parseInt(amount)
         }
+        publisher.publish('payments',JSON.stringify({amount,asset}))
         return true
     } catch (e) {
         console.error(tag, "e: ", e)
@@ -387,9 +388,23 @@ let send_to_address = async function (address:string,amount:string) {
         log.info("result: ",result)
 
         //broadcast
-        const txHash = await WEB3.eth.sendSignedTransaction(result);
-
-        return txHash.transactionHash
+        WEB3.eth.sendSignedTransaction(result)
+            .once('transactionHash', function(hash){
+                console.log("txHash", hash)
+                CURRENT_SESSION.txid = hash
+                publisher.publish("payments",JSON.stringify({txid:hash,session:CURRENT_SESSION,type:'fullfill'}))
+                return hash
+            })
+            .once('receipt', function(receipt){ console.log("receipt", receipt) })
+            .on('confirmation', function(confNumber, receipt){
+                CURRENT_SESSION.status = 'fullfilled'
+                console.log("confNumber",confNumber,"receipt",receipt) })
+            .on('error', function(error){ console.log("error", error) })
+            .then(function(receipt){
+                console.log("trasaction mined!", receipt);
+            });
+        // log.info("txHash: ",txHash)
+        // return txHash
     } catch (e) {
         console.error(tag, "e: ", e)
         throw e
@@ -492,10 +507,11 @@ let get_pool_info = async function () {
     }
 }
 
-let start_session_buy = async function (input) {
+let start_session_buy = async function (input:any) {
     let tag = TAG + " | start_session_buy | "
     try {
         if(CURRENT_SESSION) throw Error("session already started!")
+        if(!input.address) throw Error("no address!")
         //if buy intake address
         let sessionId = uuid.generate()
         let address = input.address

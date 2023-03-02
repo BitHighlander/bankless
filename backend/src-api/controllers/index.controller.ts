@@ -196,7 +196,7 @@ export class IndexController extends Controller {
                 amount:body.amount,
                 asset:body.asset
             }
-            let session = await Bankless.credit(input.amount,input.amount)
+            let session = await Bankless.credit(input.amount,input.asset)
             return session
         } catch(e){
             let errorResp:Error = {
@@ -222,7 +222,7 @@ export class IndexController extends Controller {
             let input  = {
                 address:body.address
             }
-            let session = await Bankless.startSessionBuy(input.address)
+            let session = await Bankless.startSessionBuy(input)
             return session
         } catch(e){
             let errorResp:Error = {

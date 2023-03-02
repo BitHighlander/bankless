@@ -10,13 +10,17 @@ import {
 import axios from "axios";
 import React, { useEffect, useState } from "react";
 import io from "socket.io-client";
+import { Spinner } from '@chakra-ui/react'
 
-const socket = io();
+const socket = io("ws://127.0.0.1:4000");
 
 const Onramp = () => {
   const [isConnected, setIsConnected] = useState(socket.connected);
   const [lastPong, setLastPong] = useState(null);
   const [sessionId, setSessionId] = React.useState(false);
+  const [sending, setSending] = React.useState(false);
+  const [sent, setSent] = React.useState(false);
+  const [txid, setTxid] = React.useState("");
   const [usd, setUsd] = React.useState(0);
   // const [sessionInit, setSessionInit] = React.useState(false);
   const [address, setAddress] = React.useState("");
@@ -31,8 +35,9 @@ const Onramp = () => {
       setIsConnected(false);
     });
 
-    socket.on("pong", () => {
-      setLastPong(new Date().toISOString());
+    socket.on("message", (message:any) => {
+      console.log("message: ",message);
+      onCheckDollars()
     });
 
     return () => {
@@ -79,8 +84,16 @@ const Onramp = () => {
       status = status.data
       console.log("status: ",status)
       // @ts-ignore
-      setUsd(status.session.SESSION_FUNDING_USD)
-      console.log("onCheckDollars: ");
+      if(status && status.session && status.session.SESSION_FUNDING_USD){
+        // @ts-ignore
+        setUsd(status.session.SESSION_FUNDING_USD)
+        console.log("onCheckDollars: ");
+      }
+      if(status && status.session && status.session.txid){
+        // @ts-ignore
+        setTxid(status.session.txid)
+        setSent(true)
+      }
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error(e);
@@ -106,7 +119,8 @@ const Onramp = () => {
       submitResp = submitResp.data
       // eslint-disable-next-line no-console
       console.log("submitResp: ", submitResp);
-      
+
+      setSending(true)
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error(e);
@@ -144,28 +158,34 @@ const Onramp = () => {
       OnRamp to LUSD
       {sessionId ? (
         <div>
-          sessionId {sessionId} (awaiting deposit....)
-          <div>
-            <p>USD: {usd || "0"}</p>
-          </div>
-          <Button
-            mt={4}
-            colorScheme="teal"
-            // isLoading={props.isSubmitting}
-            type="submit"
-            onClick={onCheckDollars}
-          >
-            update
-          </Button>
-          <Button
-            mt={4}
-            colorScheme="teal"
-            // isLoading={props.isSubmitting}
-            type="submit"
-            onClick={onDone}
-          >
-            Done
-          </Button>
+          {sending ? (<div>
+                {sent ? (<div>sent: txid: {txid}</div>) : (<div>
+                  <Spinner />
+                </div>)}
+          </div>) : (<div>
+            sessionId {sessionId} (awaiting deposit....)
+            <div>
+              <p>USD: {usd || "0"}</p>
+            </div>
+            <Button
+                mt={4}
+                colorScheme="teal"
+                // isLoading={props.isSubmitting}
+                type="submit"
+                onClick={onCheckDollars}
+            >
+              update
+            </Button>
+            <Button
+                mt={4}
+                colorScheme="teal"
+                // isLoading={props.isSubmitting}
+                type="submit"
+                onClick={onDone}
+            >
+              Done
+            </Button>
+          </div>)}
         </div>
       ) : (
         <div>
