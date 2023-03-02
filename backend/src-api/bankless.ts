@@ -135,7 +135,9 @@ let onStart = async function(){
             const channel = channels[result.channel - 1]
             console.log('CREDIT_NOTE', channel)
             publisher.publish(JSON.stringify({amount:channel.value/100,asset:"USD"}))
-            credit_session(channel.value/100,"USD")
+            let amount = (parseInt(channel.value)/100).toString()
+            console.log('credit amount: ', amount)
+            credit_session(amount,"USD")
         })
         
         
