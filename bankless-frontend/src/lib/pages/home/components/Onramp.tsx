@@ -7,9 +7,16 @@ import {
   Input,
   Button,
 } from "@chakra-ui/react";
+import { QrReader } from "react-qr-reader";
 import axios from "axios";
 import React, { useEffect, useState } from "react";
 import io from "socket.io-client";
+// @ts-ignore
+import EthereumQRPlugin from "ethereum-qr-code";
+import {set} from "husky";
+
+// later in code
+const qr = new EthereumQRPlugin();
 
 const socket = io();
 
@@ -20,6 +27,18 @@ const Onramp = () => {
   // const [sessionInit, setSessionInit] = React.useState(false);
   const [address, setAddress] = React.useState("");
   const handleInputChangeAddress = (e: any) => setAddress(e.target.value);
+
+  const handleError = (error) => {
+    console.error(error);
+  }
+
+  const handleScan = (data) => {
+    if (data) {
+      const paymentParams = qr.readStringToJSON(data);
+      const scannedAddress = paymentParams.to;
+      setAddress(scannedAddress);
+    }
+  };
 
   useEffect(() => {
     socket.on("connect", () => {
@@ -104,6 +123,7 @@ const Onramp = () => {
   return (
     <Grid textAlign="center" gap={2}>
       OnRamp to LUSD
+
       {sessionInit ? (
         <div>
           session {} (awaiting deposit....)
@@ -154,6 +174,11 @@ const Onramp = () => {
             >
               Continue
             </Button>
+            <QrReader
+                delay={300}
+                onError={handleError}
+                onResult={handleScan}
+                style={{ width: "100%" }}></QrReader>
           </FormControl>
         </div>
       )}

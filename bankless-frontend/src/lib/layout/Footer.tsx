@@ -11,9 +11,7 @@ const Footer = () => {
     >
       <Text fontSize="xs">
         {new Date().getFullYear()} -{" "}
-        <Link href="https://keepkey.com" isExternal>
           keepkey.com
-        </Link>
       </Text>
     </Flex>
   );
