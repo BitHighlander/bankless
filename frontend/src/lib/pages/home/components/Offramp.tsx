@@ -149,7 +149,16 @@ const Buy = () => {
 
     const onSubmitWithdrawal = async function () {
         try {
-
+            const body = {
+                address,
+                sessionId
+            };
+            console.log("address: ",address)
+            let submitResp = await axios.post(
+                "http://127.0.0.1:4000/api/v1/fullfill",
+                body
+            );
+            submitResp = submitResp.data
         } catch (e) {
             // eslint-disable-next-line no-console
             console.error(e);
