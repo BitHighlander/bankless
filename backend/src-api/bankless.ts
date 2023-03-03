@@ -90,7 +90,7 @@ let ALL_BILLS = {
     "10":  0,
     "20":  0,
     "50":  0,
-    "100":  0
+    "100":  1
 }
 let TOTAL_CASH = 0
 let TOTAL_LUSD = 0
@@ -103,45 +103,9 @@ let TXIDS_REVIEWED = []
 
 /*
     Create LP pools
-
  */
 
 let ACCOUNTS_LP_OWNERS = []
-
-let onStartSession = async function(){
-    let tag = TAG + " | onStartSession | "
-    try{
-        let timeStart = new Date().getTime()
-        log.info(tag,"timeStart: ",timeStart)
-        if(!ACCEPTOR_ONLINE) throw Error("Acceptor not online!")
-
-        //get balance of bill acceptor
-        let totalCash = 0;
-        Object.keys(ALL_BILLS).forEach(key => {
-            totalCash = totalCash + (parseInt(key) * ALL_BILLS[key]);
-        });
-        TOTAL_CASH = totalCash
-        log.info(totalCash)
-
-        //get balance of wallet
-        TOTAL_LUSD = await get_balance()
-
-        //get last state of ATM runtime
-        //@TODO
-
-        //@TODO if diff record it
-
-        //start session
-        log.info(tag,"TOTAL_CASH: ",TOTAL_CASH)
-        log.info(tag,"TOTAL_LUSD: ",TOTAL_LUSD)
-
-        //get LP owners
-
-
-    }catch(e){
-        console.error(e)
-    }
-}
 
 let onStartAcceptor = async function(){
     try{
@@ -363,7 +327,7 @@ let sub_for_payments = async function(){
 
 
             firstStart = false
-            await sleep(10000)
+            await sleep(30000)
         }
     }catch(e){
         console.error(e)
@@ -429,6 +393,69 @@ module.exports = {
     },
 }
 
+let onStartSession = async function(){
+    let tag = TAG + " | onStartSession | "
+    try{
+        let timeStart = new Date().getTime()
+        log.info(tag,"timeStart: ",timeStart)
+        //if(!ACCEPTOR_ONLINE) throw Error("Acceptor not online!")
+
+        //get balance of bill acceptor
+        let totalCash = 0;
+        Object.keys(ALL_BILLS).forEach(key => {
+            totalCash = totalCash + (parseInt(key) * ALL_BILLS[key]);
+        });
+        TOTAL_CASH = totalCash
+        log.info(totalCash)
+
+        //get balance of wallet
+        let minABI = [
+            // balanceOf
+            {
+                "constant":true,
+                "inputs":[{"name":"_owner","type":"address"}],
+                "name":"balanceOf",
+                "outputs":[{"name":"balance","type":"uint256"}],
+                "type":"function"
+            },
+            // decimals
+            {
+                "constant":true,
+                "inputs":[],
+                "name":"decimals",
+                "outputs":[{"name":"","type":"uint8"}],
+                "type":"function"
+            }
+        ];
+        let address = await signer.getAddress(WALLET_MAIN)
+        console.log("address: ",address)
+        const newContract = new WEB3.eth.Contract(minABI, LUSD_CONTRACT);
+        const decimals = await newContract.methods.decimals().call();
+        console.log("decimals: ",decimals)
+        const balanceBN = await newContract.methods.balanceOf(address).call()
+        console.log("input: balanceBN: ",balanceBN)
+        // @ts-ignore
+        let tokenBalance = parseInt(balanceBN/Math.pow(10, decimals))
+        TOTAL_LUSD = await tokenBalance
+
+        //get last state of ATM runtime
+        //@TODO
+
+        //@TODO if diff record it
+
+        //start session
+        log.info(tag,"TOTAL_CASH: ",TOTAL_CASH)
+        log.info(tag,"TOTAL_LUSD: ",TOTAL_LUSD)
+
+        //get LP owners
+
+
+    }catch(e){
+        console.error(e)
+    }
+}
+onStartSession()
+
 let fullfill_order = async function () {
     let tag = TAG + " | fullfill_order | "
     try {
@@ -436,12 +463,25 @@ let fullfill_order = async function () {
         if(!CURRENT_SESSION) throw Error("No session to fullfill!")
         if(CURRENT_SESSION.type === 'buy'){
             if(SESSION_FUNDING_USD === 0) throw Error("No session to fullfill!")
-            let txid = await send_to_address(CURRENT_SESSION.address,SESSION_FUNDING_USD.toString())
+            let rate = TOTAL_CASH / TOTAL_LUSD
+            log.info(tag,"rate: ",rate)
+            let amountOut = SESSION_FUNDING_USD * rate
+            log.info(tag,"amountOut: ",amountOut)
+            amountOut = parseInt(amountOut.toString())
+            log.info(tag,"amountOut (rounded): ",amountOut)
+            //round to int
+            let txid = await send_to_address(CURRENT_SESSION.address,amountOut.toString())
             CURRENT_SESSION.txid = txid
             return txid
         }
         if(CURRENT_SESSION.type === 'sell'){
-            let txid = await payout_cash(SESSION_FUNDING_LUSD.toString())
+            let rate = TOTAL_CASH / TOTAL_LUSD
+            log.info(tag,"rate: ",rate)
+            let amountOut = SESSION_FUNDING_LUSD * rate
+            log.info(tag,"amountOut: ",amountOut)
+            amountOut = parseInt(amountOut.toString())
+            log.info(tag,"amountOut (rounded): ",amountOut)
+            let txid = await payout_cash(amountOut.toString())
             CURRENT_SESSION.txid = txid
             return txid
         }
@@ -702,9 +742,9 @@ let get_status = async function () {
         let output:any = {
             billacceptor:"online",
             hotwallet:"online",
-            balanceUSD: 23000, //TODO get this from hardware
-            balanceLUSD: 29000, //TODO get this from hotwallet
-            rate: 23000 / 29000,
+            balanceUSD: TOTAL_CASH, //TODO get this from hardware
+            balanceLUSD: TOTAL_LUSD, //TODO get this from hotwallet
+            rate: TOTAL_CASH / TOTAL_LUSD,
             session: CURRENT_SESSION,
             totalUsd: totalSelected,
             cash: ALL_BILLS

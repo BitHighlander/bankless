@@ -25,13 +25,12 @@ const Onramp = () => {
         "http://localhost:4000/api/v1/" + "status"
       );
       setStatus(status.data);
-
       setAvailableOnes(status.data.cash['1'])
       setAvailableFives(status.data.cash['5'])
       setAvailableTens(status.data.cash['10'])
       setAvailableTwenties(status.data.cash['20'])
       setAvailableFifties(status.data.cash['50'])
-      availableHundreds(status.data.cash['100'])
+      setAvailableHundreds(status.data.cash['100'])
       
       //total
       let totalSelected = 0;
