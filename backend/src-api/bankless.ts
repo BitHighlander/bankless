@@ -150,9 +150,9 @@ let onStart = async function(){
             credit_session(amount,"USD")
         })
         
-        await eSSP.open('/dev/ttyUSB0', serialPortConfig)
-        ///dev/tty.usbserial-AQ031MU7
-        // await eSSP.open('/dev/tty.usbserial-AQ031MU7', serialPortConfig)
+        //await eSSP.open('/dev/ttyUSB0', serialPortConfig)
+        //dev/tty.usbserial-AQ031MU7
+        await eSSP.open('/dev/tty.usbserial-AQ031MU7', serialPortConfig)
         await eSSP.command('SYNC')
         await eSSP.command('HOST_PROTOCOL_VERSION', { version: 6 })
         console.log('disabling payin')
@@ -214,22 +214,22 @@ let onStart = async function(){
             let level = levels[i]
             console.log('level: ', level)
             if(level.value == 100){
-                ALL_BILLS["1"] = level.count
+                ALL_BILLS["1"] = level.denomination_level
             }
             if(level.value == 500){
-                ALL_BILLS["5"] = level.count
+                ALL_BILLS["5"] = level.denomination_level
             }
             if(level.value == 1000){
-                ALL_BILLS["10"] = level.count
+                ALL_BILLS["10"] = level.denomination_level
             }
             if(level.value == 2000){
-                ALL_BILLS["20"] = level.count
+                ALL_BILLS["20"] = level.denomination_level
             }
             if(level.value == 5000){
-                ALL_BILLS["50"] = level.count
+                ALL_BILLS["50"] = level.denomination_level
             }
             if(level.value == 10000){
-                ALL_BILLS["100"] = level.count
+                ALL_BILLS["100"] = level.denomination_level
             }
         }
 
@@ -307,6 +307,11 @@ let fullfill_order = async function () {
             return txid
         }
         if(CURRENT_SESSION.type === 'sell'){
+            let totalSelected = 0;
+            Object.keys(ALL_BILLS).forEach(key => {
+                totalSelected = totalSelected + (parseInt(key) * ALL_BILLS[key]);
+            });
+            SESSION_FUNDING_LUSD = totalSelected
             let txid = await payout_cash(SESSION_FUNDING_LUSD.toString())
             CURRENT_SESSION.txid = txid
             return txid
@@ -340,13 +345,9 @@ let payout_cash = async function (amount:string) {
     let tag = TAG + " | payout_cash | "
     try {
         log.info("paying out cash: ",amount)
-        let totalSelected = 0;
-        Object.keys(ALL_BILLS).forEach(key => {
-            totalSelected = totalSelected + (parseInt(key) * ALL_BILLS[key]);
-        });
         //verify
         let result = await eSSP.command('PAYOUT_AMOUNT', {
-            amount:totalSelected,
+            amount:parseInt(amount) * 100,
             country_code: 'USD',
             test: false,
         })
@@ -495,6 +496,17 @@ let get_balance = async function () {
     }
 }
 
+let check_for_payments = async function (amount:number) {
+    let tag = TAG + " | check_for_payments | "
+    try {
+        //@TODO amount in pennies, INT
+        balanceUSD = balanceUSD + amount
+
+    } catch (e) {
+        console.error(tag, "e: ", e)
+        throw e
+    }
+}
 
 
 let credit_usd = async function (amount:number) {
@@ -581,10 +593,16 @@ let start_session_buy = async function (input:any) {
 let start_session_sell = async function (input) {
     let tag = TAG + " | start_session_sell | "
     try {
+        log.info(tag,"input: ",input)
         //if buy intake address
         let sessionId = uuid.generate()
         let amount = input.amount
-        CURRENT_SESSION = {sessionId, amount, type:"sell"}
+        if(!amount) throw Error("no amount!")
+        //address
+        let address = await signer.getAddress(WALLET_MAIN)
+        
+        CURRENT_SESSION = {sessionId, amount, type:"sell", address}
+        log.info("CURRENT_SESSION: ",CURRENT_SESSION)
         return CURRENT_SESSION
     } catch (e) {
         console.error(tag, "e: ", e)

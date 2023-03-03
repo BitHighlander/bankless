@@ -25,6 +25,7 @@ const Buy = () => {
   const [totalSelected, setTotalSelected] = useState(0);
   const [readyForDeposit, setReadyForDeposit] = useState(false);
   const [address, setAddress] = useState("");
+  const [amount, setAmount] = useState("");
   const [qrcode, setQrcode] = useState({});
 
   const tallySelected = async function () {
@@ -49,42 +50,57 @@ const Buy = () => {
       console.error(e);
     }
   };
+    // onstart get data
+    useEffect(() => {
+        tallySelected();
+    }, [totalSelected]);
+
 
     const onSubmit = async function () {
         try {
             tallySelected()
-            //
-            const body = {
-                amount: totalSelected.toString(),
-            };
-            let submitResp = await axios.post(
-                "http://127.0.0.1:4000/api/v1/create/sell",
-                body
-            );
-            submitResp = submitResp.data
-            setSessionId(submitResp.sessionId)
-            setReadyForDeposit(true)
-            // eslint-disable-next-line no-console
-            console.log("submitResp: ", submitResp);
-            
-            let address = await axios.get(
-                "http://localhost:4000/api/v1/" + "Address"
-            );
-            address = address.data
-            console.log("address: ",address)
-            setAddress(address)
 
-            //make payment string
-            const paymentParams = {
-                to:address,
-                amount:totalSelected,
-                gas: 21000,
+            if(totalSelected === 0){
+                alert("Please select at least one bill");
+                return;
+            } else {
+                const body = {
+                    amount: totalSelected.toString(),
+                };
+                console.log("body: ", body);
+                let submitResp = await axios.post(
+                    "http://127.0.0.1:4000/api/v1/create/sell",
+                    body
+                );
+                submitResp = submitResp.data
+                setSessionId(submitResp.sessionId)
+                setReadyForDeposit(true)
+                setAddress(submitResp.address)
+                setAmount(submitResp.amount)
+                // eslint-disable-next-line no-console
+                console.log("submitResp: ", submitResp);
             }
-            const qrCode = qr.toCanvas(paymentParams, {
-                selector: '#my-qr-code',
-            })
+            //
+
+            
+            // let address = await axios.get(
+            //     "http://localhost:4000/api/v1/" + "Address"
+            // );
+            // address = address.data
+            // console.log("address: ",address)
+            // setAddress(address)
+            //
+            // //make payment string
+            // const paymentParams = {
+            //     to:address,
+            //     amount:totalSelected,
+            //     gas: 21000,
+            // }
+            // const qrCode = qr.toCanvas(paymentParams, {
+            //     selector: '#my-qr-code',
+            // })
             // setQrcode(qrCode)
-            readyForDeposit(true)
+            setReadyForDeposit(true)
         } catch (e) {
             // eslint-disable-next-line no-console
             console.error(e);
@@ -185,6 +201,8 @@ const Buy = () => {
           {readyForDeposit ? (<div>
               <br/>
               address: {address}
+              <br/>
+              amount: {amount}
               <br/>
               sessionId: {sessionId}
               <br/>

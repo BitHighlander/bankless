@@ -244,9 +244,9 @@ export class IndexController extends Controller {
     public async createSell(@Body() body: BodySell): Promise<any> {
         let tag = TAG + " | createBuy | "
         try{
-            if(!body.amount) throw Error("address is required!")
+            if(!body.amount) throw Error("amount is required!")
             let input  = {
-                address:body.amount
+                amount:body.amount
             }
             let session = await Bankless.startSessionSell(input)
             return session

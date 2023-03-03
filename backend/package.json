@@ -13,6 +13,7 @@
     "start": "node dist/main.js"
   },
   "dependencies": {
+    "@dri/ethereum-qr-code": "^0.3.0",
     "@keepkey/encrypted-smiley-secure-protocol": "0.0.13",
     "@pioneer-platform/default-redis": "^8.1.17",
     "@pioneer-platform/loggerdog": "^8.1.18",
@@ -23,6 +24,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "eth_mnemonic_signer": "^1.0.9",
+    "ethereum-qr-code": "^0.3.0",
     "express": "^4.17.1",
     "method-override": "^3.0.0",
     "rate-limiter-flexible": "^2.1.7",
