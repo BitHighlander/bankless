@@ -26,6 +26,9 @@ let URL_WALLET = "http://localhost:3001"
 let WALLET_MAIN = process.env['WALLET_MAIN']
 if(!WALLET_MAIN) throw Error("Missing WALLET_MAIN from ENV!")
 
+let NO_BROADCAST = process.env['WALLET_NO_BROADCAST']
+if(NO_BROADCAST) log.info(" NERFED! wallet will not send crypto!")
+
 // order types
 enum OrderTypes {
     Buy,
@@ -80,7 +83,7 @@ let LUSD_CONTRACT = "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0"
 
 //bill acceptor
 let eSSP:any
-
+let ACCEPTOR_ONLINE = false
 let ALL_BILLS = {
     "1": 0,
     "5": 0,
@@ -89,7 +92,8 @@ let ALL_BILLS = {
     "50":  0,
     "100":  0
 }
-
+let TOTAL_CASH = 0
+let TOTAL_LUSD = 0
 //current session
 let CURRENT_SESSION
 let SESSION_FUNDING_USD = 0
@@ -97,7 +101,49 @@ let SESSION_FUNDING_LUSD = 0
 let SESSION_FULLFILLED = false
 let TXIDS_REVIEWED = []
 
-let onStart = async function(){
+/*
+    Create LP pools
+
+ */
+
+let ACCOUNTS_LP_OWNERS = []
+
+let onStartSession = async function(){
+    let tag = TAG + " | onStartSession | "
+    try{
+        let timeStart = new Date().getTime()
+        log.info(tag,"timeStart: ",timeStart)
+        if(!ACCEPTOR_ONLINE) throw Error("Acceptor not online!")
+
+        //get balance of bill acceptor
+        let totalCash = 0;
+        Object.keys(ALL_BILLS).forEach(key => {
+            totalCash = totalCash + (parseInt(key) * ALL_BILLS[key]);
+        });
+        TOTAL_CASH = totalCash
+        log.info(totalCash)
+
+        //get balance of wallet
+        TOTAL_LUSD = await get_balance()
+
+        //get last state of ATM runtime
+        //@TODO
+
+        //@TODO if diff record it
+
+        //start session
+        log.info(tag,"TOTAL_CASH: ",TOTAL_CASH)
+        log.info(tag,"TOTAL_LUSD: ",TOTAL_LUSD)
+
+        //get LP owners
+
+
+    }catch(e){
+        console.error(e)
+    }
+}
+
+let onStartAcceptor = async function(){
     try{
         const channels = []
 
@@ -231,13 +277,13 @@ let onStart = async function(){
                 ALL_BILLS["100"] = level.denomination_level
             }
         }
-
-
+        ACCEPTOR_ONLINE = true
+        onStartSession()
     }catch(e){
         console.error(e)
     }
 }
-onStart()
+onStartAcceptor()
 
 let sub_for_payments = async function(){
     let tag = " | sub_for_payments | "
@@ -259,7 +305,8 @@ let sub_for_payments = async function(){
                 },
             };
             let resp = await axios(body)
-
+            if(!resp.data) return
+            if(!resp.data.txids) return
             let txids = resp.data.txids
             for(let i = 0; i < txids.length; i++){
                 let txid = txids[i]
@@ -398,6 +445,26 @@ let fullfill_order = async function () {
             CURRENT_SESSION.txid = txid
             return txid
         }
+        if(CURRENT_SESSION.type === 'lpAdd'){
+            //caluate LP tokens
+            // let lpTokens = await calculate_lp_tokens(SESSION_FUNDING_LUSD,SESSION_FUNDING_USD)
+
+            //credit owner
+            let txid = "bla"
+            return txid
+        }
+        if(CURRENT_SESSION.type === 'lpAddAsym'){
+            //do swap
+
+            //caluate LP tokens
+
+            //credit owner
+            let txid = "bla"
+            return txid
+        }
+        SESSION_FUNDING_LUSD = 0
+        SESSION_FUNDING_USD = 0
+        SESSION_FULLFILLED = false
         CURRENT_SESSION = null
     } catch (e) {
         console.error(tag, "e: ", e)
@@ -516,22 +583,27 @@ let send_to_address = async function (address:string,amount:string) {
         let result = await signer.signTx(input, WALLET_MAIN)
         log.info("result: ",result)
 
-        //broadcast
-        WEB3.eth.sendSignedTransaction(result)
-            .once('transactionHash', function(hash){
-                console.log("txHash", hash)
-                CURRENT_SESSION.txid = hash
-                publisher.publish("payments",JSON.stringify({txid:hash,session:CURRENT_SESSION,type:'fullfill'}))
-                return hash
-            })
-            .once('receipt', function(receipt){ console.log("receipt", receipt) })
-            .on('confirmation', function(confNumber, receipt){
-                CURRENT_SESSION.status = 'fullfilled'
-                console.log("confNumber",confNumber,"receipt",receipt) })
-            .on('error', function(error){ console.log("error", error) })
-            .then(function(receipt){
-                console.log("trasaction mined!", receipt);
-            });
+        if(NO_BROADCAST){
+            return "NERFED!-nobroadcast"
+        }else{
+            //broadcast
+            WEB3.eth.sendSignedTransaction(result)
+                .once('transactionHash', function(hash){
+                    console.log("txHash", hash)
+                    CURRENT_SESSION.txid = hash
+                    publisher.publish("payments",JSON.stringify({txid:hash,session:CURRENT_SESSION,type:'fullfill'}))
+                    return hash
+                })
+                .once('receipt', function(receipt){ console.log("receipt", receipt) })
+                .on('confirmation', function(confNumber, receipt){
+                    CURRENT_SESSION.status = 'fullfilled'
+                    console.log("confNumber",confNumber,"receipt",receipt) })
+                .on('error', function(error){ console.log("error", error) })
+                .then(function(receipt){
+                    console.log("trasaction mined!", receipt);
+                });
+        }
+
         // log.info("txHash: ",txHash)
         // return txHash
     } catch (e) {
@@ -698,7 +770,7 @@ let start_session_lp_add = async function (input) {
         //if buy intake address
         let sessionId = uuid.generate()
         let address = input.address
-        CURRENT_SESSION = {sessionId, address}
+        CURRENT_SESSION = {sessionId, address, type:"lpAdd"}
         return CURRENT_SESSION
     } catch (e) {
         console.error(tag, "e: ", e)
@@ -712,7 +784,7 @@ let start_session_lp_add_asym = async function (input) {
         //if buy intake address
         let sessionId = uuid.generate()
         let address = input.address
-        CURRENT_SESSION = {sessionId, address}
+        CURRENT_SESSION = {sessionId, address, type:"lpAddAsym"}
         return CURRENT_SESSION
     } catch (e) {
         console.error(tag, "e: ", e)
@@ -726,7 +798,7 @@ let start_session_lp_withdraw = async function (input) {
         //if buy intake address
         let sessionId = uuid.generate()
         let address = input.address
-        CURRENT_SESSION = {sessionId, address}
+        CURRENT_SESSION = {sessionId, address, type:"lpAddAsym"}
         return currentSession
     } catch (e) {
         console.error(tag, "e: ", e)

@@ -6,10 +6,14 @@
 let TAG = ' | API | '
 
 const pjson = require('../../package.json');
-import * as log from '@pioneer-platform/loggerdog'
+const log = require('@pioneer-platform/loggerdog')();
 // const {subscriber, publisher, redis} = require('@pioneer-platform/default-redis')
 
 let Bankless = require("../bankless")
+
+//ALLOW_HACK
+let ALLOW_HACK = process.env['WALLET_ALLOW_HACK']
+if(ALLOW_HACK) log.info(" ALTERT! wallet will allow dummy payments! ONLY FOR DEV!")
 
 //rest-ts
 import { Body, Controller, Get, Post, Route, Tags, SuccessResponse, Query, Request, Response, Header } from 'tsoa';
@@ -42,7 +46,6 @@ interface BodyFund {
 interface BodyBuy {
     address:string
 }
-
 
 interface BodySell {
     amount:string
@@ -204,7 +207,7 @@ export class IndexController extends Controller {
             throw new ApiError("error",503,"error: "+e.toString());
         }
     }
-    
+
     /*
     * HACK DEPOSIT
     *
@@ -216,12 +219,16 @@ export class IndexController extends Controller {
         try{
             if(!body.amount) throw Error("missing amount!")
             if(!body.asset) throw Error("missing asset!")
-            let input  = {
-                amount:body.amount,
-                asset:body.asset
+            if(ALLOW_HACK){
+                let input  = {
+                    amount:body.amount,
+                    asset:body.asset
+                }
+                let session = await Bankless.credit(input.amount,input.asset)
+                return session
+            } else {
+                return {success:false,error:"PRODUCTION MODE! NO HACKS ALLOWED!"}
             }
-            let session = await Bankless.credit(input.amount,input.asset)
-            return session
         } catch(e){
             let errorResp:Error = {
                 success:false,
@@ -298,7 +305,7 @@ export class IndexController extends Controller {
             let input  = {
                 address:body.address
             }
-            let session = await Bankless.startSessionBuy(input.address)
+            let session = await Bankless.startSessionLpAdd(input.address)
             return session
         } catch(e){
             let errorResp:Error = {
@@ -324,7 +331,7 @@ export class IndexController extends Controller {
             let input  = {
                 address:body.address
             }
-            let session = await Bankless.startSessionBuy(input.address)
+            let session = await Bankless.startSessionLpAddAsym(input.address)
             return session
         } catch(e){
             let errorResp:Error = {
@@ -350,7 +357,7 @@ export class IndexController extends Controller {
             let input  = {
                 address:body.address
             }
-            let session = await Bankless.startSessionBuy(input.address)
+            let session = await Bankless.startSessionLpWithdraw(input.address)
             return session
         } catch(e){
             let errorResp:Error = {
@@ -376,7 +383,7 @@ export class IndexController extends Controller {
             let input  = {
                 address:body.address
             }
-            let session = await Bankless.startSessionBuy(input.address)
+            let session = await Bankless.startSessionLpWithdrawAsym(input.address)
             return session
         } catch(e){
             let errorResp:Error = {

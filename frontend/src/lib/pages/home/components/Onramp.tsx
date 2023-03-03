@@ -74,7 +74,7 @@ const Onramp = () => {
   const onSubmit = async function () {
     try {
 
-      //
+      //onSubmit
       const body = {
         address,
       };
@@ -93,16 +93,15 @@ const Onramp = () => {
       console.error(e);
     }
   };
-
+  //get last session
+  let status = await axios.get(
+      "http://localhost:4000/api/v1/" + "status"
+  );
+  status = status.data
+  console.log("status: ",status)
   const onCheckDollars = async function () {
     try {
       // eslint-disable-next-line no-console
-      //get last session
-      let status = await axios.get(
-          "http://localhost:4000/api/v1/" + "status"
-      );
-      status = status.data
-      console.log("status: ",status)
       // @ts-ignore
       if(status && status.session && status.session.SESSION_FUNDING_USD){
         // @ts-ignore
