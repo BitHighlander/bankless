@@ -182,6 +182,30 @@ export class IndexController extends Controller {
     }
 
     /*
+    balance endpoint
+
+*/
+
+    @Get('/payments')
+    public async payments() {
+        let tag = TAG + " | payments | "
+        try{
+
+            let output:any = Bankless.payments()
+
+            return(output)
+        }catch(e){
+            let errorResp:Error = {
+                success:false,
+                tag,
+                e
+            }
+            log.error(tag,"e: ",{errorResp})
+            throw new ApiError("error",503,"error: "+e.toString());
+        }
+    }
+    
+    /*
     * HACK DEPOSIT
     *
     *

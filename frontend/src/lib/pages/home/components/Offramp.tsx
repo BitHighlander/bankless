@@ -3,14 +3,18 @@ import {
   Box,
     Button
 } from "@chakra-ui/react";
-import React, { useEffect, useState } from "react";
 import "../../../styles/ButtonContainer.css";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
+import io from "socket.io-client";
 import EthereumQRPlugin from "@dri/ethereum-qr-code";
 // later in code
 const qr = new EthereumQRPlugin();
 
+const socket = io("ws://127.0.0.1:4000");
+
 const Buy = () => {
+  const [isConnected, setIsConnected] = useState(socket.connected);
   const [availableFives, setAvailableFives] = useState(0);
   const [sessionId, setSessionId] = React.useState(false);
   const [availableTens, setAvailableTens] = useState(0);
@@ -27,7 +31,65 @@ const Buy = () => {
   const [address, setAddress] = useState("");
   const [amount, setAmount] = useState("");
   const [qrcode, setQrcode] = useState({});
+  const [usd, setUsd] = useState("");
 
+    useEffect(() => {
+        socket.on("connect", () => {
+            setIsConnected(true);
+        });
+
+        socket.on("disconnect", () => {
+            setIsConnected(false);
+        });
+
+        socket.on("message", (message:any) => {
+            console.log("message: ",message);
+            onCheckDollars()
+        });
+
+        return () => {
+            socket.off("connect");
+            socket.off("disconnect");
+            socket.off("pong");
+        };
+    }, []);
+
+
+    const onCheckDollars = async function () {
+        try {
+            // eslint-disable-next-line no-console
+            console.log("onCheckDollars: ");
+            let status = await axios.get(
+                "http://localhost:4000/api/v1/" + "status"
+            );
+            status = status.data
+            console.log("status: ",status)
+            // @ts-ignore
+            if(status && status.session && status.session.SESSION_FUNDING_LUSD){
+                // @ts-ignore
+                setUsd(status.session.SESSION_FUNDING_LUSD)
+
+                //fullfill
+                const body = {
+                    amount:status.session.SESSION_FUNDING_LUSD,
+                    sessionId
+                };
+                console.log("address: ",address)
+                let submitResp = await axios.post(
+                    "http://127.0.0.1:4000/api/v1/fullfill",
+                    body
+                );
+                submitResp = submitResp.data
+                // eslint-disable-next-line no-console
+                console.log("submitResp: ", submitResp);
+            }
+
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error(e);
+        }
+    };
+    
   const tallySelected = async function () {
     try {
         //go to API get this data
@@ -203,6 +265,8 @@ const Buy = () => {
               address: {address}
               <br/>
               amount: {amount}
+              <br/>
+              usd: {usd}
               <br/>
               sessionId: {sessionId}
               <br/>

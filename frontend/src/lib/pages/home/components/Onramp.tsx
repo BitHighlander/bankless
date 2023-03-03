@@ -126,7 +126,6 @@ const Onramp = () => {
       console.log("onDone: ");
       
       //fullfill
-      //
       const body = {
         address,
         sessionId

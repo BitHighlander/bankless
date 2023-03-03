@@ -71,7 +71,6 @@ interface lp {
 //STATE @TODO move this to DB?
 let balanceUSD = 0
 let balanceLUSD = 0
-
 let currentSession:any //@TODO session must use session Types
 
 const Web3 = require("web3")
@@ -91,12 +90,12 @@ let ALL_BILLS = {
     "100":  0
 }
 
-
 //current session
 let CURRENT_SESSION
 let SESSION_FUNDING_USD = 0
 let SESSION_FUNDING_LUSD = 0
 let SESSION_FULLFILLED = false
+let TXIDS_REVIEWED = []
 
 let onStart = async function(){
     try{
@@ -150,9 +149,9 @@ let onStart = async function(){
             credit_session(amount,"USD")
         })
         
-        //await eSSP.open('/dev/ttyUSB0', serialPortConfig)
+        await eSSP.open('/dev/ttyUSB0', serialPortConfig)
         //dev/tty.usbserial-AQ031MU7
-        await eSSP.open('/dev/tty.usbserial-AQ031MU7', serialPortConfig)
+        //await eSSP.open('/dev/tty.usbserial-AQ031MU7', serialPortConfig)
         await eSSP.command('SYNC')
         await eSSP.command('HOST_PROTOCOL_VERSION', { version: 6 })
         console.log('disabling payin')
@@ -240,6 +239,91 @@ let onStart = async function(){
 }
 onStart()
 
+let sub_for_payments = async function(){
+    let tag = " | sub_for_payments | "
+    try{
+    let address = await signer.getAddress(WALLET_MAIN)
+        log.info(tag,"address: ",address)
+
+        //let first start
+        let firstStart = true
+        let isScanning = true
+        while(isScanning){
+            log.info(tag,"scanning...")
+            let url = "https://indexer.ethereum.shapeshift.com"+"/api/v2/address/"+address+"?details=all"
+            let body = {
+                method: 'GET',
+                url,
+                headers: {
+                    'content-type': 'application/json'
+                },
+            };
+            let resp = await axios(body)
+
+            let txids = resp.data.txids
+            for(let i = 0; i < txids.length; i++){
+                let txid = txids[i]
+                if(CURRENT_SESSION && !TXIDS_REVIEWED.some(e => e.txid === txid)){
+                    let url = "https://indexer.ethereum.shapeshift.com"+"/api/v2/tx/"+txid
+                    let body = {
+                        method: 'GET',
+                        url,
+                        headers: {
+                            'content-type': 'application/json'
+                        },
+                    };
+                    let respTx = await axios(body)
+                    let paymentAmountLusd = 0
+                    for(let i = 0; i < respTx.data.tokenTransfers.length; i++){
+                        let transfer = respTx.data.tokenTransfers[i]
+                        if(transfer["symbol"] == "LUSD" && transfer.contract === LUSD_CONTRACT){
+                            paymentAmountLusd = parseInt(transfer.value) / 1000000000000000000
+                            SESSION_FUNDING_LUSD += paymentAmountLusd
+                        }
+                    }
+                    log.info("paymentAmountLusd: ",paymentAmountLusd)
+                    log.info("SESSION_FUNDING_LUSD: ",SESSION_FUNDING_LUSD)
+                    let payment = {
+                        txid:txids[i],
+                        asset:"LSD",
+                        session:CURRENT_SESSION.sessionId,
+                        amount:paymentAmountLusd,
+                        funded:true,
+                        fullfilled:false
+                    }
+                    TXIDS_REVIEWED.push(payment)
+                    //Payment found!
+                    publisher.publish("payments",JSON.stringify(payment))
+                    if(CURRENT_SESSION) CURRENT_SESSION.SESSION_FUNDING_LUSD = SESSION_FUNDING_LUSD
+                } else if(!TXIDS_REVIEWED.some(e => e.txid === txid) && !firstStart){
+                    log.info(tag,"payment outside session!")
+                    log.info(tag,"payment: !")
+                    let payment = {
+                        txid:txids[i],
+                        session:"none",
+                        status:"missed"
+                    }
+                    TXIDS_REVIEWED.push(payment)
+                } else if(firstStart){
+                    let payment = {
+                        txid:txids[i],
+                        session:"none",
+                        status:"ignored"
+                    }
+                    TXIDS_REVIEWED.push(payment)
+                }
+            }
+
+
+            firstStart = false
+            await sleep(10000)
+        }
+    }catch(e){
+        console.error(e)
+    }
+}
+sub_for_payments()
+
 module.exports = {
     status: async function () {
         return get_status();
@@ -275,7 +359,10 @@ module.exports = {
     credit: async function (amount:number,asset:string) {
         return credit_session(amount,asset);
     },
-    //wallet
+    //wallet TXIDS_REVIEWED
+    payments: async function () {
+        return TXIDS_REVIEWED;
+    },
     address: async function () {
         return signer.getAddress(WALLET_MAIN);
     },
@@ -307,11 +394,6 @@ let fullfill_order = async function () {
             return txid
         }
         if(CURRENT_SESSION.type === 'sell'){
-            let totalSelected = 0;
-            Object.keys(ALL_BILLS).forEach(key => {
-                totalSelected = totalSelected + (parseInt(key) * ALL_BILLS[key]);
-            });
-            SESSION_FUNDING_LUSD = totalSelected
             let txid = await payout_cash(SESSION_FUNDING_LUSD.toString())
             CURRENT_SESSION.txid = txid
             return txid
