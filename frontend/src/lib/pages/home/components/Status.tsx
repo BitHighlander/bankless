@@ -30,7 +30,7 @@ const Onramp = () => {
       setAvailableFives(status.data.cash['5'])
       setAvailableTens(status.data.cash['10'])
       setAvailableTwenties(status.data.cash['20'])
-      availableFifties(status.data.cash['50'])
+      setAvailableFifties(status.data.cash['50'])
       availableHundreds(status.data.cash['100'])
       
       //total
@@ -38,7 +38,6 @@ const Onramp = () => {
       Object.keys(status.data.cash).forEach(key => {
         totalSelected = totalSelected + (parseInt(key) * status.data.cash[key]);
       });
-
 
       // eslint-disable-next-line no-console
       console.log("status: ", status.data);

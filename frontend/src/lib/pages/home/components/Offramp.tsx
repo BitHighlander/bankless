@@ -51,8 +51,19 @@ const Buy = () => {
 
     const onSubmit = async function () {
         try {
-            setReadyForDeposit(true)
-
+            tallySelected()
+            //
+            const body = {
+                amount: totalSelected,
+            };
+            let submitResp = await axios.post(
+                "http://127.0.0.1:4000/api/v1/create/sell",
+                body
+            );
+            submitResp = submitResp.data
+            // eslint-disable-next-line no-console
+            console.log("submitResp: ", submitResp);
+            
             let address = await axios.get(
                 "http://localhost:4000/api/v1/" + "Address"
             );
@@ -78,7 +89,6 @@ const Buy = () => {
 
     const onStart = async function () {
         try {
-            setReadyForDeposit(true)
             
             
         } catch (e) {
@@ -158,6 +168,7 @@ const Buy = () => {
                 "http://127.0.0.1:4000/api/v1/fullfill",
                 body
             );
+
             submitResp = submitResp.data
         } catch (e) {
             // eslint-disable-next-line no-console
