@@ -90,7 +90,7 @@ let ALL_BILLS = {
     "10":  0,
     "20":  0,
     "50":  0,
-    "100":  1
+    "100":  0
 }
 let TOTAL_CASH = 0
 let TOTAL_LUSD = 0
@@ -159,9 +159,9 @@ let onStartAcceptor = async function(){
             credit_session(amount,"USD")
         })
         
-        await eSSP.open('/dev/ttyUSB0', serialPortConfig)
+        //await eSSP.open('/dev/ttyUSB0', serialPortConfig)
         //dev/tty.usbserial-AQ031MU7
-        //await eSSP.open('/dev/tty.usbserial-AQ031MU7', serialPortConfig)
+        await eSSP.open('/dev/tty.usbserial-AQ031MU7', serialPortConfig)
         await eSSP.command('SYNC')
         await eSSP.command('HOST_PROTOCOL_VERSION', { version: 6 })
         console.log('disabling payin')
@@ -388,8 +388,8 @@ module.exports = {
         return payout_cash(amount);
     },
     //fullfill
-    fullfill: async function () {
-        return fullfill_order();
+    fullfill: async function (sessionId:string) {
+        return fullfill_order(sessionId);
     },
 }
 
@@ -456,7 +456,7 @@ let onStartSession = async function(){
 }
 onStartSession()
 
-let fullfill_order = async function () {
+let fullfill_order = async function (sessionId:string) {
     let tag = TAG + " | fullfill_order | "
     try {
         log.info("CURRENT_SESSION: ",CURRENT_SESSION)
@@ -465,7 +465,7 @@ let fullfill_order = async function () {
             if(SESSION_FUNDING_USD === 0) throw Error("No session to fullfill!")
             let rate = TOTAL_CASH / TOTAL_LUSD
             log.info(tag,"rate: ",rate)
-            let amountOut = SESSION_FUNDING_USD * rate
+            let amountOut = SESSION_FUNDING_USD / rate
             log.info(tag,"amountOut: ",amountOut)
             amountOut = parseInt(amountOut.toString())
             log.info(tag,"amountOut (rounded): ",amountOut)

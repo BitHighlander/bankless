@@ -38,6 +38,10 @@ interface BodySend {
     amount:string
 }
 
+interface BodyFullfill {
+    sessionId:string
+}
+
 interface BodyFund {
     amount:string,
     asset:string
@@ -239,6 +243,36 @@ export class IndexController extends Controller {
             throw new ApiError("error",503,"error: "+e.toString());
         }
     }
+
+    /*
+* HACK DEPOSIT
+*
+*
+* */
+    @Post('/hack/withdrawalCash')
+    public async withdrawalCash(@Body() body: BodyFund): Promise<any> {
+        let tag = TAG + " | withdrawalCash | "
+        try{
+            if(!body.amount) throw Error("missing amount!")
+            if(ALLOW_HACK){
+                let input  = {
+                    amount:body.amount
+                }
+                let session = await Bankless.payout(input.amount)
+                return session
+            } else {
+                return {success:false,error:"PRODUCTION MODE! NO HACKS ALLOWED!"}
+            }
+        } catch(e){
+            let errorResp:Error = {
+                success:false,
+                tag,
+                e
+            }
+            log.error(tag,"e: ",{errorResp})
+            throw new ApiError("error",503,"error: "+e.toString());
+        }
+    }
     
     /*
     * buy lusd
@@ -402,10 +436,11 @@ export class IndexController extends Controller {
     *  Tell the atm the user is done in the funding stage
     * */
     @Post('/fullfill')
-    public async fullfill(@Body() body: any): Promise<any> {
+    public async fullfill(@Body() body: BodyFullfill): Promise<any> {
         let tag = TAG + " | fullfill | "
         try{
-            if(!body.sessionId) throw Error("amount is required!")
+            log.info(tag,"body: ",body)
+            if(!body.sessionId) throw Error("sessionId is required!")
             let session = await Bankless.fullfill(body.sessionId)
             return session
         } catch(e){

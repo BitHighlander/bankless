@@ -75,10 +75,9 @@ const Buy = () => {
 
                 //fullfill
                 const body = {
-                    amount:status.session.SESSION_FUNDING_LUSD,
-                    sessionId
+                    sessionId:"test"
                 };
-                console.log("address: ",address)
+                console.log("body: ",body)
                 let submitResp = await axios.post(
                     "http://127.0.0.1:4000/api/v1/fullfill",
                     body
