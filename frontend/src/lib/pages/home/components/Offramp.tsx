@@ -24,7 +24,7 @@ const Buy = () => {
   const [totalSelected, setTotalSelected] = useState(0);
   const [readyForDeposit, setReadyForDeposit] = useState(false);
   const [address, setAddress] = useState("");
-    const [qrcode, setQrcode] = useState({});
+  const [qrcode, setQrcode] = useState({});
 
   const tallySelected = async function () {
     try {
@@ -69,17 +69,28 @@ const Buy = () => {
             const qrCode = qr.toCanvas(paymentParams, {
                 selector: '#my-qr-code',
             })
-            setQrcode(qrCode)
+            // setQrcode(qrCode)
         } catch (e) {
             // eslint-disable-next-line no-console
             console.error(e);
         }
     };
 
-  // // onstart get data
-  // useEffect(() => {
-  //   onStart();
-  // }, []);
+    const onStart = async function () {
+        try {
+            setReadyForDeposit(true)
+            
+            
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error(e);
+        }
+    };
+    
+  // onstart get data
+  useEffect(() => {
+    onStart();
+  }, []);
 
     const onClickFives = async function () {
         try {
@@ -136,11 +147,29 @@ const Buy = () => {
         }
     };
 
+    const onSubmitWithdrawal = async function () {
+        try {
+
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error(e);
+        }
+    };
+    
   return (
       <div>
           {readyForDeposit ? (<div>
-              PayMeBitch {address}
+              address: {address}
               {/*{qrcode}*/}
+              <Button
+                  mt={4}
+                  colorScheme='teal'
+                  //isLoading={props.isSubmitting}
+                  type='submit'
+                  onClick={onSubmitWithdrawal}
+              >
+                  Dump Bills
+              </Button>
           </div>) : (<div style={{ paddingTop: '50px' }} className="button-container">
               <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
                   <button onClick={onClickFives} className="button">$5</button> <span className="small-text">available: {availableFives} selected {selectedFives}</span>

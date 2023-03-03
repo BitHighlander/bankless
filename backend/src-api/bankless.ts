@@ -82,6 +82,16 @@ let LUSD_CONTRACT = "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0"
 //bill acceptor
 let eSSP:any
 
+let ALL_BILLS = {
+    "1": 0,
+    "5": 0,
+    "10":  0,
+    "20":  0,
+    "50":  0,
+    "100":  0
+}
+
+
 //current session
 let CURRENT_SESSION
 let SESSION_FUNDING_USD = 0
@@ -139,7 +149,6 @@ let onStart = async function(){
             console.log('credit amount: ', amount)
             credit_session(amount,"USD")
         })
-        
         
         await eSSP.open('/dev/ttyUSB0', serialPortConfig)
         ///dev/tty.usbserial-AQ031MU7
@@ -200,6 +209,30 @@ let onStart = async function(){
         console.log('get levels')
         const levels = (await eSSP.command('GET_ALL_LEVELS'))?.info?.counter;
         console.log(levels)
+
+        for(let i = 0; i < levels.length; i++){
+            let level = levels[i]
+            console.log('level: ', level)
+            if(level.value == 100){
+                ALL_BILLS["1"] = level.count
+            }
+            if(level.value == 500){
+                ALL_BILLS["5"] = level.count
+            }
+            if(level.value == 1000){
+                ALL_BILLS["10"] = level.count
+            }
+            if(level.value == 2000){
+                ALL_BILLS["20"] = level.count
+            }
+            if(level.value == 5000){
+                ALL_BILLS["50"] = level.count
+            }
+            if(level.value == 10000){
+                ALL_BILLS["100"] = level.count
+            }
+        }
+
 
     }catch(e){
         console.error(e)
@@ -273,6 +306,12 @@ let fullfill_order = async function () {
             CURRENT_SESSION.txid = txid
             return txid
         }
+        if(CURRENT_SESSION.type === 'sell'){
+            if(SESSION_FUNDING_LUSD === 0) throw Error("No session to fullfill!")
+            let txid = await payout_cash()
+            CURRENT_SESSION.txid = txid
+            return txid
+        }
         CURRENT_SESSION = null
     } catch (e) {
         console.error(tag, "e: ", e)
@@ -301,10 +340,13 @@ let credit_session = async function (amount:any,asset:string) {
 let payout_cash = async function (amount:string) {
     let tag = TAG + " | payout_cash | "
     try {
-        
+        let totalSelected = 0;
+        Object.keys(ALL_BILLS).forEach(key => {
+            totalSelected = totalSelected + (parseInt(key) * ALL_BILLS[key]);
+        });
         //verify
         let result = await eSSP.command('PAYOUT_AMOUNT', {
-            amount,
+            amount:totalSelected,
             country_code: 'USD',
             test: false,
         })
@@ -485,13 +527,21 @@ let get_status = async function () {
         //
         if(CURRENT_SESSION) CURRENT_SESSION.SESSION_FUNDING_USD = SESSION_FUNDING_USD
         if(CURRENT_SESSION) CURRENT_SESSION.SESSION_FUNDING_LUSD = SESSION_FUNDING_LUSD
+
+        let totalSelected = 0;
+        Object.keys(ALL_BILLS).forEach(key => {
+            totalSelected = totalSelected + (parseInt(key) * ALL_BILLS[key]);
+        });
+
         let output:any = {
             billacceptor:"online",
             hotwallet:"online",
             balanceUSD: 23000, //TODO get this from hardware
             balanceLUSD: 29000, //TODO get this from hotwallet
             rate: 23000 / 29000,
-            session: CURRENT_SESSION
+            session: CURRENT_SESSION,
+            totalUsd: totalSelected,
+            cash: ALL_BILLS
         }
         return output
     } catch (e) {
