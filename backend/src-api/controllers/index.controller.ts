@@ -45,7 +45,7 @@ interface BodyBuy {
 
 
 interface BodySell {
-    address:string
+    amount:string
 }
 
 interface BodyLPAdd {
@@ -244,11 +244,11 @@ export class IndexController extends Controller {
     public async createSell(@Body() body: BodySell): Promise<any> {
         let tag = TAG + " | createBuy | "
         try{
-            if(!body.address) throw Error("address is required!")
+            if(!body.amount) throw Error("address is required!")
             let input  = {
-                address:body.address
+                address:body.amount
             }
-            let session = await Bankless.startSessionBuy(input.address)
+            let session = await Bankless.startSessionSell(input)
             return session
         } catch(e){
             let errorResp:Error = {

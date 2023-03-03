@@ -257,7 +257,7 @@ module.exports = {
         return start_session_buy(input);
     },
     startSessionSell: async function (input:any) {
-        return start_session_buy(input);
+        return start_session_sell(input);
     },
     startSessionLpAdd: async function (input:any) {
         return start_session_lp_add(input);
@@ -307,8 +307,7 @@ let fullfill_order = async function () {
             return txid
         }
         if(CURRENT_SESSION.type === 'sell'){
-            if(SESSION_FUNDING_LUSD === 0) throw Error("No session to fullfill!")
-            let txid = await payout_cash()
+            let txid = await payout_cash(SESSION_FUNDING_LUSD.toString())
             CURRENT_SESSION.txid = txid
             return txid
         }
@@ -340,6 +339,7 @@ let credit_session = async function (amount:any,asset:string) {
 let payout_cash = async function (amount:string) {
     let tag = TAG + " | payout_cash | "
     try {
+        log.info("paying out cash: ",amount)
         let totalSelected = 0;
         Object.keys(ALL_BILLS).forEach(key => {
             totalSelected = totalSelected + (parseInt(key) * ALL_BILLS[key]);
@@ -351,7 +351,7 @@ let payout_cash = async function (amount:string) {
             test: false,
         })
         log.info("result: ",result)
-        
+        return "done"
     } catch (e) {
         console.error(tag, "e: ", e)
         throw e
@@ -564,7 +564,7 @@ let get_pool_info = async function () {
 let start_session_buy = async function (input:any) {
     let tag = TAG + " | start_session_buy | "
     try {
-        if(CURRENT_SESSION) throw Error("session already started!")
+        if(CURRENT_SESSION) return CURRENT_SESSION
         if(!input.address) throw Error("no address!")
         //if buy intake address
         let sessionId = uuid.generate()
@@ -583,9 +583,9 @@ let start_session_sell = async function (input) {
     try {
         //if buy intake address
         let sessionId = uuid.generate()
-        let address = input.address
-        currentSession = {sessionId, address}
-        return currentSession
+        let amount = input.amount
+        CURRENT_SESSION = {sessionId, amount, type:"sell"}
+        return CURRENT_SESSION
     } catch (e) {
         console.error(tag, "e: ", e)
         throw e
@@ -598,8 +598,8 @@ let start_session_lp_add = async function (input) {
         //if buy intake address
         let sessionId = uuid.generate()
         let address = input.address
-        currentSession = {sessionId, address}
-        return currentSession
+        CURRENT_SESSION = {sessionId, address}
+        return CURRENT_SESSION
     } catch (e) {
         console.error(tag, "e: ", e)
         throw e
@@ -612,8 +612,8 @@ let start_session_lp_add_asym = async function (input) {
         //if buy intake address
         let sessionId = uuid.generate()
         let address = input.address
-        currentSession = {sessionId, address}
-        return currentSession
+        CURRENT_SESSION = {sessionId, address}
+        return CURRENT_SESSION
     } catch (e) {
         console.error(tag, "e: ", e)
         throw e
@@ -626,7 +626,7 @@ let start_session_lp_withdraw = async function (input) {
         //if buy intake address
         let sessionId = uuid.generate()
         let address = input.address
-        currentSession = {sessionId, address}
+        CURRENT_SESSION = {sessionId, address}
         return currentSession
     } catch (e) {
         console.error(tag, "e: ", e)
@@ -640,7 +640,7 @@ let start_session_lp_withdraw_asym = async function (input) {
         //if buy intake address
         let sessionId = uuid.generate()
         let address = input.address
-        currentSession = {sessionId, address}
+        CURRENT_SESSION = {sessionId, address}
         return currentSession
     } catch (e) {
         console.error(tag, "e: ", e)

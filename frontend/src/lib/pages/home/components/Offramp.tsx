@@ -12,6 +12,7 @@ const qr = new EthereumQRPlugin();
 
 const Buy = () => {
   const [availableFives, setAvailableFives] = useState(0);
+  const [sessionId, setSessionId] = React.useState(false);
   const [availableTens, setAvailableTens] = useState(0);
   const [availableTwenties, setAvailableTwenties] = useState(0);
   const [availableFifties, setAvailableFifties] = useState(0);
@@ -54,13 +55,15 @@ const Buy = () => {
             tallySelected()
             //
             const body = {
-                amount: totalSelected,
+                amount: totalSelected.toString(),
             };
             let submitResp = await axios.post(
                 "http://127.0.0.1:4000/api/v1/create/sell",
                 body
             );
             submitResp = submitResp.data
+            setSessionId(submitResp.sessionId)
+            setReadyForDeposit(true)
             // eslint-disable-next-line no-console
             console.log("submitResp: ", submitResp);
             
@@ -81,6 +84,7 @@ const Buy = () => {
                 selector: '#my-qr-code',
             })
             // setQrcode(qrCode)
+            readyForDeposit(true)
         } catch (e) {
             // eslint-disable-next-line no-console
             console.error(e);
@@ -179,7 +183,11 @@ const Buy = () => {
   return (
       <div>
           {readyForDeposit ? (<div>
+              <br/>
               address: {address}
+              <br/>
+              sessionId: {sessionId}
+              <br/>
               {/*{qrcode}*/}
               <Button
                   mt={4}
