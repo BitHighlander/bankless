@@ -10,6 +10,8 @@ import io from "socket.io-client";
 import EthereumQRPlugin from "@dri/ethereum-qr-code";
 // later in code
 const qr = new EthereumQRPlugin();
+import QRCode from 'qrcode.react';
+
 
 const socket = io("ws://127.0.0.1:4000");
 
@@ -32,6 +34,8 @@ const Buy = () => {
   const [amount, setAmount] = useState("");
   const [qrcode, setQrcode] = useState({});
   const [usd, setUsd] = useState("");
+  const [qrString, setQrString] = useState("");
+
 
     useEffect(() => {
         socket.on("connect", () => {
@@ -139,6 +143,9 @@ const Buy = () => {
                 setReadyForDeposit(true)
                 setAddress(submitResp.address)
                 setAmount(submitResp.amount)
+
+                const newQrString = submitResp.address.toString();
+                setQrString(newQrString);
                 // eslint-disable-next-line no-console
                 console.log("submitResp: ", submitResp);
             }
@@ -280,6 +287,22 @@ const Buy = () => {
               >
                   Dump Bills
               </Button>
+              <div
+                  style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      marginTop: "10px",
+                  }}
+              >
+                  <div
+                      style={{
+                          border: "5px solid white",
+                          padding: "5px",
+                      }}
+                  >
+                      <QRCode value={qrString} size={300} />
+                  </div>
+              </div>
           </div>) : (<div style={{ paddingTop: '50px' }} className="button-container">
               <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
                   <button onClick={onClickFives} className="button">$5</button> <span className="small-text">available: {availableFives} selected {selectedFives}</span>
