@@ -5,6 +5,7 @@ import React, { useEffect } from "react";
 const Onramp = () => {
   const [status, setStatus] = React.useState({
     rate: "...",
+    sessionId: "...",
   });
 
   const onStart = async function () {
@@ -13,6 +14,7 @@ const Onramp = () => {
         "http://localhost:4000/api/v1/" + "status"
       );
       setStatus(status.data);
+      //setStatus(status.data.sessionId);
       // eslint-disable-next-line no-console
       console.log("status: ", status.data);
     } catch (e) {
@@ -29,6 +31,7 @@ const Onramp = () => {
   return (
     <Grid textAlign="center" gap={2}>
       Rate LUSD: {status.rate}
+      SessionId: {status.sessionId}
     </Grid>
   );
 };

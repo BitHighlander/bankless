@@ -42,9 +42,13 @@ interface BodyFullfill {
     sessionId:string
 }
 
-interface BodyFund {
+interface BodyFundFiat {
     amount:string,
     asset:string
+}
+
+interface BodyFundCrypto {
+    amount:string
 }
 
 interface BodyBuy {
@@ -217,9 +221,9 @@ export class IndexController extends Controller {
     *
     *
     * */
-    @Post('/hack/fund')
-    public async fundSession(@Body() body: BodyFund): Promise<any> {
-        let tag = TAG + " | createBuy | "
+    @Post('/hack/fundFiat')
+    public async fundFiat(@Body() body: BodyFundFiat): Promise<any> {
+        let tag = TAG + " | fundFiat | "
         try{
             if(!body.amount) throw Error("missing amount!")
             if(!body.asset) throw Error("missing asset!")
@@ -244,13 +248,45 @@ export class IndexController extends Controller {
         }
     }
 
+
+    /*
+    * HACK DEPOSIT
+    *
+    *
+    * */
+    @Post('/hack/fundCrypto')
+    public async fundCrypto(@Body() body: BodyFundCrypto): Promise<any> {
+        let tag = TAG + " | fundCrypto | "
+        try{
+            if(!body.amount) throw Error("missing amount!")
+            if(ALLOW_HACK){
+                let input  = {
+                    amount:body.amount,
+                }
+                let session = await Bankless.creditLUSD(Number(input.amount))
+                return session
+            } else {
+                return {success:false,error:"PRODUCTION MODE! NO HACKS ALLOWED!"}
+            }
+        } catch(e){
+            let errorResp:Error = {
+                success:false,
+                tag,
+                e
+            }
+            log.error(tag,"e: ",{errorResp})
+            throw new ApiError("error",503,"error: "+e.toString());
+        }
+    }
+
+
     /*
 * HACK DEPOSIT
 *
 *
 * */
     @Post('/hack/withdrawalCash')
-    public async withdrawalCash(@Body() body: BodyFund): Promise<any> {
+    public async withdrawalCash(@Body() body: BodyFundFiat): Promise<any> {
         let tag = TAG + " | withdrawalCash | "
         try{
             if(!body.amount) throw Error("missing amount!")

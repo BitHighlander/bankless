@@ -17,12 +17,14 @@ const socket = io("ws://127.0.0.1:4000");
 
 const Buy = () => {
   const [isConnected, setIsConnected] = useState(socket.connected);
-  const [availableFives, setAvailableFives] = useState(0);
   const [sessionId, setSessionId] = React.useState(false);
+  const [availableOnes, setAvailableOnes] = useState(0);
+  const [availableFives, setAvailableFives] = useState(0);
   const [availableTens, setAvailableTens] = useState(0);
   const [availableTwenties, setAvailableTwenties] = useState(0);
   const [availableFifties, setAvailableFifties] = useState(0);
   const [availableHundreds, setAvailableHundreds] = useState(0);
+  const [selectedOnes, setselectedOnes] = useState(0);
   const [selectedFives, setselectedFives] = useState(0);
   const [selectedTens, setselectedTens] = useState(0);
   const [selectedTwenties, setselectedTwenties] = useState(0);
@@ -32,6 +34,8 @@ const Buy = () => {
   const [readyForDeposit, setReadyForDeposit] = useState(false);
   const [address, setAddress] = useState("");
   const [amount, setAmount] = useState("");
+    const [amountIn, setAmountIn] = useState("");
+    const [amountOut, setAmountOut] = useState("");
   const [qrcode, setQrcode] = useState({});
   const [usd, setUsd] = useState("");
   const [qrString, setQrString] = useState("");
@@ -73,7 +77,7 @@ const Buy = () => {
                 // @ts-ignore
                 setUsd(status.session.SESSION_FUNDING_LUSD)
 
-                //fullfill
+/*                //fullfill
                 const body = {
                     sessionId:"test"
                 };
@@ -84,7 +88,7 @@ const Buy = () => {
                 );
                 submitResp = submitResp.data
                 // eslint-disable-next-line no-console
-                console.log("submitResp: ", submitResp);
+                console.log("submitResp: ", submitResp);*/
             }
 
         } catch (e) {
@@ -97,6 +101,7 @@ const Buy = () => {
     try {
         //go to API get this data
         let allBills = {
+            "1": selectedOnes,
             "5": selectedFives,
             "10":  selectedTens,
             "20":  selectedTwenties,
@@ -141,7 +146,8 @@ const Buy = () => {
                 setSessionId(submitResp.sessionId)
                 setReadyForDeposit(true)
                 setAddress(submitResp.address)
-                setAmount(submitResp.amount)
+                setAmountIn(submitResp.amountIn)
+                setAmountOut(submitResp.amountOut)
 
                 const newQrString = submitResp.address.toString();
                 setQrString(newQrString);
@@ -177,8 +183,27 @@ const Buy = () => {
 
     const onStart = async function () {
         try {
-            
-            
+            // eslint-disable-next-line @typescript-eslint/no-shadow
+            const status = await axios.get(
+                // eslint-disable-next-line no-useless-concat
+                "http://localhost:4000/api/v1/" + "status"
+            );
+            //setStatus(status.data);
+            setAvailableOnes(status.data.cash['1'])
+            setAvailableFives(status.data.cash['5'])
+            setAvailableTens(status.data.cash['10'])
+            setAvailableTwenties(status.data.cash['20'])
+            setAvailableFifties(status.data.cash['50'])
+            setAvailableHundreds(status.data.cash['100'])
+
+            //total
+            let totalSelected = 0;
+            Object.keys(status.data.cash).forEach(key => {
+                totalSelected = totalSelected + (parseInt(key) * status.data.cash[key]);
+            });
+
+            // eslint-disable-next-line no-console
+            console.log("status: ", status.data);
         } catch (e) {
             // eslint-disable-next-line no-console
             console.error(e);
@@ -189,6 +214,17 @@ const Buy = () => {
   useEffect(() => {
     onStart();
   }, []);
+
+    const onClickOnes = async function () {
+        try {
+            let selectedOnesNew = selectedOnes + 1;
+            setselectedOnes(selectedOnesNew)
+            tallySelected()
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error(e);
+        }
+    };
 
     const onClickFives = async function () {
         try {
@@ -252,12 +288,12 @@ const Buy = () => {
                 sessionId
             };
             console.log("address: ",address)
-            let submitResp = await axios.post(
+/*            let submitResp = await axios.post(
                 "http://127.0.0.1:4000/api/v1/fullfill",
                 body
             );
 
-            submitResp = submitResp.data
+            submitResp = submitResp.data*/
         } catch (e) {
             // eslint-disable-next-line no-console
             console.error(e);
@@ -270,9 +306,9 @@ const Buy = () => {
               <br/>
               address: {address}
               <br/>
-              amount: {amount}
+              Bills to be bought: {amountOut}
               <br/>
-              usd: {usd}
+              LUSD to deposit: {amountIn}
               <br/>
               sessionId: {sessionId}
               <br/>
@@ -303,6 +339,9 @@ const Buy = () => {
                   </div>
               </div>
           </div>) : (<div style={{ paddingTop: '50px' }} className="button-container">
+              <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
+                  <button onClick={onClickOnes} className="button">$1</button> <span className="small-text">available: {availableOnes} selected {selectedOnes}</span>
+              </Box>
               <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
                   <button onClick={onClickFives} className="button">$5</button> <span className="small-text">available: {availableFives} selected {selectedFives}</span>
               </Box>
