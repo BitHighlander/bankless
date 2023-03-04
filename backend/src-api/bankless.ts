@@ -90,7 +90,7 @@ let ALL_BILLS = {
     "10":  0,
     "20":  0,
     "50":  0,
-    "100":  0
+    "100":  1
 }
 let TOTAL_CASH = 0
 let TOTAL_LUSD = 0
@@ -180,7 +180,12 @@ let onStartAcceptor = async function(){
             publisher.publish("payments",JSON.stringify({amount:channel.value/100,asset:"USD"}))
             let amount = (parseInt(channel.value)/100).toString()
             console.log('credit amount: ', amount)
-            credit_session(amount,"USD")
+            let input = {
+                amount: amount,
+                assetId: "USD",
+                sessionId: CURRENT_SESSION.sessionId
+            }
+            if(CURRENT_SESSION.sessionId)credit_session(input)
         })
         
         await eSSP.open('/dev/ttyUSB0', serialPortConfig)
@@ -273,6 +278,40 @@ let onStartAcceptor = async function(){
 }
 onStartAcceptor()
 
+let countBills = async function(){
+    try{
+        console.log()
+        console.log('get levels')
+        const levels = (await eSSP.command('GET_ALL_LEVELS'))?.info?.counter;
+        console.log(levels)
+
+        for(let i = 0; i < levels.length; i++){
+            let level = levels[i]
+            console.log('level: ', level)
+            if(level.value == 100){
+                ALL_BILLS["1"] = level.denomination_level
+            }
+            if(level.value == 500){
+                ALL_BILLS["5"] = level.denomination_level
+            }
+            if(level.value == 1000){
+                ALL_BILLS["10"] = level.denomination_level
+            }
+            if(level.value == 2000){
+                ALL_BILLS["20"] = level.denomination_level
+            }
+            if(level.value == 5000){
+                ALL_BILLS["50"] = level.denomination_level
+            }
+            if(level.value == 10000){
+                ALL_BILLS["100"] = level.denomination_level
+            }
+        }
+    }catch(e){
+        console.error(e)
+    }
+}
+
 let sub_for_payments = async function(){
     let tag = " | sub_for_payments | "
     try{
@@ -298,7 +337,7 @@ let sub_for_payments = async function(){
             let txids = resp.data.txids
             for(let i = 0; i < txids.length; i++){
                 let txid = txids[i]
-                log.info("txid: ",txid)
+                //log.info("txid: ",txid)
                 if(CURRENT_SESSION && !TXIDS_REVIEWED.some(e => e.txid === txid)){
                     let url = "https://indexer.ethereum.shapeshift.com"+"/api/v2/tx/"+txid
                     let body = {
@@ -364,12 +403,6 @@ module.exports = {
     status: async function () {
         return get_status();
     },
-    creditUSD: async function (amount:number) {
-        return credit_usd(amount);
-    },
-    creditLUSD: async function (amount:number) {
-        return credit_lusd(amount);
-    },
     poolInfo: async function () {
         return get_pool_info();
     },
@@ -392,8 +425,8 @@ module.exports = {
         return start_session_lp_withdraw_asym(input);
     },
     //credit session
-    credit: async function (amount:number,asset:string) {
-        return credit_session(amount,asset);
+    credit: async function (input:any) {
+        return credit_session(input);
     },
     //wallet TXIDS_REVIEWED
     payments: async function () {
@@ -416,6 +449,33 @@ module.exports = {
     fullfill: async function (sessionId:string) {
         return fullfill_order(sessionId);
     },
+    //fullfill
+    clear: async function (sessionId:string) {
+        clear_session()
+        return true;
+    },
+}
+
+let clear_session = async function () {
+    let tag = TAG + " | clear_session | "
+    try {
+        CURRENT_SESSION = {
+            sessionId: null,
+            type: null,
+            address: null,
+            txid: null,
+            status: null,
+            amountIn: null,
+            amountOut: null,
+            SESSION_FUNDING_USD: 0,
+            SESSION_FUNDING_LUSD: 0,
+            SESSION_FULLFILLED: false,
+        }
+        countBills()
+    } catch (e) {
+        console.error(tag, "e: ", e)
+        throw e
+    }
 }
 
 let onStartSession = async function(){
@@ -497,7 +557,9 @@ let fullfill_order = async function (sessionId:string) {
             amountOut = parseInt(amountOut.toString())
             log.info(tag,"amountOut (rounded): ",amountOut)
             //round to int
-            let txid = await send_to_address(CURRENT_SESSION.address,amountOut.toString())
+            let addressFullFill = CURRENT_SESSION.address
+            clear_session()
+            let txid = await send_to_address(addressFullFill,amountOut.toString())
             CURRENT_SESSION.txid = txid
             return txid
         }
@@ -508,8 +570,10 @@ let fullfill_order = async function (sessionId:string) {
             log.info(tag,"amountOut: ",amountOut)
             amountOut = parseInt(amountOut.toString())
             log.info(tag,"amountOut (rounded): ",amountOut)
+            clear_session()
             let txid = await payout_cash(amountOut.toString())
             CURRENT_SESSION.txid = txid
+
             return txid
         }
         if(CURRENT_SESSION.type === 'lpAdd'){
@@ -518,6 +582,7 @@ let fullfill_order = async function (sessionId:string) {
 
             //credit owner
             let txid = "bla"
+            clear_session()
             return txid
         }
         if(CURRENT_SESSION.type === 'lpAddAsym'){
@@ -527,29 +592,29 @@ let fullfill_order = async function (sessionId:string) {
 
             //credit owner
             let txid = "bla"
+            CURRENT_SESSION = null
             return txid
         }
-        CURRENT_SESSION.SESSION_FUNDING_LUSD = 0
-        CURRENT_SESSION.SESSION_FUNDING_USD = 0
-        CURRENT_SESSION.SESSION_FULLFILLED = false
-        CURRENT_SESSION = null
     } catch (e) {
         console.error(tag, "e: ", e)
         throw e
     }
 }
 
-let credit_session = async function (amount:any,asset:string) {
+let credit_session = async function (input:any) {
     let tag = TAG + " | credit_session | "
     try {
-        log.info(amount, asset)
-        if(asset === 'USD'){
-            CURRENT_SESSION.SESSION_FUNDING_USD = (CURRENT_SESSION.SESSION_FUNDING_USD ?? 0) + parseInt(amount)
+        if(!input.asset) throw Error("No asset!")
+        if(!input.amount) throw Error("No amount!")
+        if(!input.sessionId) throw Error("No sessionId!")
+        log.info(tag,"input: ",input)
+        if(input.asset === 'USD'){
+            CURRENT_SESSION.SESSION_FUNDING_USD = (CURRENT_SESSION.SESSION_FUNDING_USD ?? 0) + parseInt(input.amount)
         }
-        if(asset === 'LUSD'){
-            CURRENT_SESSION.SESSION_FUNDING_LUSD = (CURRENT_SESSION.SESSION_FUNDING_LUSD ?? 0) + parseInt(amount)
+        if(input.asset === 'LUSD'){
+            CURRENT_SESSION.SESSION_FUNDING_LUSD = (CURRENT_SESSION.SESSION_FUNDING_LUSD ?? 0) + input.amount
         }
-        publisher.publish('payments',JSON.stringify({amount,asset}))
+        publisher.publish('payments',JSON.stringify(input))
         return true
     } catch (e) {
         console.error(tag, "e: ", e)
@@ -560,15 +625,18 @@ let credit_session = async function (amount:any,asset:string) {
 let payout_cash = async function (amount:string) {
     let tag = TAG + " | payout_cash | "
     try {
-        amount = amount.toString()
-        log.info("paying out cash: ",amount)
-        //verify
-        let result = await eSSP.command('PAYOUT_AMOUNT', {
-            amount:parseInt(amount) * 100,
-            country_code: 'USD',
-            test: false,
-        })
-        log.info("result: ",result)
+        if(!NO_BROADCAST){ return "paied bro"} else{
+            amount = amount.toString()
+            if(amount === "0") amount = "1"
+            log.info("paying out cash: ",amount)
+            //verify
+            let result = await eSSP.command('PAYOUT_AMOUNT', {
+                amount:parseInt(amount) * 100,
+                country_code: 'USD',
+                test: false,
+            })
+            log.info("result: ",result)
+        }
         return "done"
     } catch (e) {
         console.error(tag, "e: ", e)
@@ -719,57 +787,6 @@ let get_balance = async function () {
     }
 }
 
-let check_for_payments = async function (amount:number) {
-    let tag = TAG + " | check_for_payments | "
-    try {
-        //@TODO amount in pennies, INT
-        balanceUSD = balanceUSD + amount
-
-    } catch (e) {
-        console.error(tag, "e: ", e)
-        throw e
-    }
-}
-
-
-let credit_usd = async function (amount:number) {
-    let tag = TAG + " | credit_usd | "
-    try {
-        //@TODO amount in pennies, INT
-        balanceUSD = balanceUSD + amount
-
-    } catch (e) {
-        console.error(tag, "e: ", e)
-        throw e
-    }
-}
-
-let credit_lusd = async function (amount:number) {
-    let tag = TAG + " | credit_usd | "
-    try {
-        //@TODO amount in pennies, INT
-        balanceLUSD = balanceLUSD + amount
-
-        CURRENT_SESSION.SESSION_FUNDING_LUSD = (CURRENT_SESSION.SESSION_FUNDING_LUSD ?? 0) + amount
-        let payment = {
-            txid:"foobar",
-            asset:"LSD",
-            session:CURRENT_SESSION.sessionId,
-            amount:amount,
-            funded:true,
-            fullfilled:false
-        }
-        TXIDS_REVIEWED.push(payment)
-        //Payment found!
-        publisher.publish("payments",JSON.stringify(payment))
-        fullfill_order(CURRENT_SESSION.sessionId)
-
-    } catch (e) {
-        console.error(tag, "e: ", e)
-        throw e
-    }
-}
-
 let get_status = async function () {
     let tag = TAG + " | get_and_rescan_pubkeys | "
     try {
@@ -809,7 +826,7 @@ let get_pool_info = async function () {
 let start_session_buy = async function (input:any) {
     let tag = TAG + " | start_session_buy | "
     try {
-        if(CURRENT_SESSION) return CURRENT_SESSION
+        if(CURRENT_SESSION && CURRENT_SESSION.sessionId) throw Error("already in session!")
         if(!input.address) throw Error("no address!")
         //if buy intake address
         let sessionId = uuid.generate()
@@ -837,7 +854,13 @@ let start_session_sell = async function (input) {
         //address
         let address = await signer.getAddress(WALLET_MAIN)
         
-        CURRENT_SESSION = {sessionId, amountIn, amountOut:amount, type:"sell", address}
+        CURRENT_SESSION = {
+            sessionId,
+            amountIn,
+            amountOut:amount,
+            type:"sell",
+            address
+        }
         log.info("CURRENT_SESSION: ",CURRENT_SESSION)
         return CURRENT_SESSION
     } catch (e) {

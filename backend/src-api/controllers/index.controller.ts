@@ -38,17 +38,23 @@ interface BodySend {
     amount:string
 }
 
+interface BodyWithdrawCash {
+    amount:string
+}
+
+
 interface BodyFullfill {
     sessionId:string
 }
 
-interface BodyFundFiat {
-    amount:string,
-    asset:string
+interface BodyClear {
+    sessionId:string
 }
 
-interface BodyFundCrypto {
+interface BodyFund {
     amount:string
+    asset:string
+    sessionId:string
 }
 
 interface BodyBuy {
@@ -216,54 +222,27 @@ export class IndexController extends Controller {
         }
     }
 
+
     /*
     * HACK DEPOSIT
     *
     *
     * */
-    @Post('/hack/fundFiat')
-    public async fundFiat(@Body() body: BodyFundFiat): Promise<any> {
-        let tag = TAG + " | fundFiat | "
+    @Post('/hack/fund')
+    public async fund(@Body() body: BodyFund): Promise<any> {
+        let tag = TAG + " | fund | "
         try{
             if(!body.amount) throw Error("missing amount!")
             if(!body.asset) throw Error("missing asset!")
+            if(!body.sessionId) throw Error("missing sessionId!")
+
             if(ALLOW_HACK){
                 let input  = {
                     amount:body.amount,
-                    asset:body.asset
+                    asset:body.asset,
+                    sessionId:body.sessionId
                 }
-                let session = await Bankless.credit(input.amount,input.asset)
-                return session
-            } else {
-                return {success:false,error:"PRODUCTION MODE! NO HACKS ALLOWED!"}
-            }
-        } catch(e){
-            let errorResp:Error = {
-                success:false,
-                tag,
-                e
-            }
-            log.error(tag,"e: ",{errorResp})
-            throw new ApiError("error",503,"error: "+e.toString());
-        }
-    }
-
-
-    /*
-    * HACK DEPOSIT
-    *
-    *
-    * */
-    @Post('/hack/fundCrypto')
-    public async fundCrypto(@Body() body: BodyFundCrypto): Promise<any> {
-        let tag = TAG + " | fundCrypto | "
-        try{
-            if(!body.amount) throw Error("missing amount!")
-            if(ALLOW_HACK){
-                let input  = {
-                    amount:body.amount,
-                }
-                let session = await Bankless.creditLUSD(Number(input.amount))
+                let session = await Bankless.credit(input)
                 return session
             } else {
                 return {success:false,error:"PRODUCTION MODE! NO HACKS ALLOWED!"}
@@ -286,7 +265,7 @@ export class IndexController extends Controller {
 *
 * */
     @Post('/hack/withdrawalCash')
-    public async withdrawalCash(@Body() body: BodyFundFiat): Promise<any> {
+    public async withdrawalCash(@Body() body: BodyWithdrawCash): Promise<any> {
         let tag = TAG + " | withdrawalCash | "
         try{
             if(!body.amount) throw Error("missing amount!")
@@ -478,6 +457,30 @@ export class IndexController extends Controller {
             log.info(tag,"body: ",body)
             if(!body.sessionId) throw Error("sessionId is required!")
             let session = await Bankless.fullfill(body.sessionId)
+            return session
+        } catch(e){
+            let errorResp:Error = {
+                success:false,
+                tag,
+                e
+            }
+            log.error(tag,"e: ",{errorResp})
+            throw new ApiError("error",503,"error: "+e.toString());
+        }
+    }
+
+    /*
+    *  clear session
+    *  Completes the order
+    *  Tell the atm the user is done in the funding stage
+    * */
+    @Post('/clear')
+    public async clear(@Body() body: BodyFullfill): Promise<any> {
+        let tag = TAG + " | clear | "
+        try{
+            log.info(tag,"body: ",body)
+            if(!body.sessionId) throw Error("sessionId is required!")
+            let session = await Bankless.clear(body.sessionId)
             return session
         } catch(e){
             let errorResp:Error = {

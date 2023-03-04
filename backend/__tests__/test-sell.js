@@ -4,7 +4,7 @@ import axios from 'axios';
  */
 
 let axios = require('axios')
-
+let assert = require('assert');
 
 let run_test = async () => {
     try{
@@ -19,11 +19,23 @@ let run_test = async () => {
         );
         respCreate = respCreate.data
         console.log("respCreate: ", respCreate);
+        let amountIn = respCreate.amountIn
+        assert(respCreate.amountIn)
+        console.log("amountIn: ", amountIn);
+        //deposit crypto
 
-        //deposit dollars
+        //get last session
+        let status = await axios.get(
+            "http://localhost:4000/api/v1/" + "status"
+        );
+        status = status.data
+        console.log("status: ",status)
+        assert(status.session.sessionId)
+
         //hit fake endpoint
         const bodyFund = {
-            amount:"1",
+            sessionId:status.session.sessionId,
+            amount:amountIn.toString(),
             asset:"LUSD"
         };
         console.log("bodyFund: ",bodyFund)
@@ -36,15 +48,16 @@ let run_test = async () => {
         console.log("respFund: ", respFund);
 
         //get last session
-        let status = await axios.get(
+        let status2 = await axios.get(
             "http://localhost:4000/api/v1/" + "status"
         );
-        status = status.data
-        console.log("status: ",status)
+        status2 = status2.data
+        console.log("status2: ",status2)
+        assert(status2.session.SESSION_FUNDING_LUSD)
 
         //fullfill
         const bodyFullfill = {
-            amount:status.session.SESSION_FUNDING_LUSD,
+            amount:status2.session.SESSION_FUNDING_LUSD,
             sessionId:status.session.sessionId
         };
         console.log("bodyFullfill: ",bodyFullfill)
@@ -56,10 +69,6 @@ let run_test = async () => {
         // eslint-disable-next-line no-console
         console.log("respFullfill: ", respFullfill);
 
-
-        //get crypto info
-
-        //end session
 
     }catch(e){
         console.error(e)

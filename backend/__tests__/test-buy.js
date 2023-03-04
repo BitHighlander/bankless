@@ -4,7 +4,7 @@ import axios from 'axios';
  */
 
 let axios = require('axios')
-
+let assert = require('assert');
 
 let run_test = async () => {
     try{
@@ -19,10 +19,14 @@ let run_test = async () => {
         );
         respCreate = respCreate.data
         console.log("respCreate: ", respCreate);
+        assert(respCreate.sessionId);
+        assert(respCreate.type === "buy");
+        assert(respCreate.address === bodyCreate.address);
 
         //deposit dollars
         //hit fake endpoint
         const bodyFund = {
+            sessionId:respCreate.sessionId,
             amount:"1",
             asset:"USD"
         };
@@ -44,7 +48,6 @@ let run_test = async () => {
 
         //fullfill
         const bodyFullfill = {
-            amount:status.session.SESSION_FUNDING_LUSD,
             sessionId:status.session.sessionId
         };
         console.log("bodyFullfill: ",bodyFullfill)
@@ -56,10 +59,6 @@ let run_test = async () => {
         // eslint-disable-next-line no-console
         console.log("respFullfill: ", respFullfill);
 
-
-        //get crypto info
-        
-        //end session
 
     }catch(e){
         console.error(e)
