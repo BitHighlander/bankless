@@ -96,8 +96,6 @@ export class IndexController extends Controller {
 
     /*
         Health endpoint
-
-
     */
 
     @Get('/health')
@@ -128,7 +126,6 @@ export class IndexController extends Controller {
 
     /*
     status endpoint
-
     */
 
     @Get('/status')
@@ -260,10 +257,10 @@ export class IndexController extends Controller {
 
 
     /*
-* HACK DEPOSIT
-*
-*
-* */
+    * HACK DEPOSIT
+    *
+    *
+    * */
     @Post('/hack/withdrawalCash')
     public async withdrawalCash(@Body() body: BodyWithdrawCash): Promise<any> {
         let tag = TAG + " | withdrawalCash | "

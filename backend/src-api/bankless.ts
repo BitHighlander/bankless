@@ -182,15 +182,16 @@ let onStartAcceptor = async function(){
             console.log('credit amount: ', amount)
             let input = {
                 amount: amount,
-                assetId: "USD",
+                asset: "USD",
                 sessionId: CURRENT_SESSION.sessionId
             }
             if(CURRENT_SESSION.sessionId)credit_session(input)
         })
-        
-        await eSSP.open('/dev/ttyUSB0', serialPortConfig)
+
+        //@TODO detectOS and select correct string
+        //await eSSP.open('/dev/ttyUSB0', serialPortConfig)
         //dev/tty.usbserial-AQ031MU7
-        //await eSSP.open('/dev/tty.usbserial-AQ031MU7', serialPortConfig)
+        await eSSP.open('/dev/tty.usbserial-AQ031MU7', serialPortConfig)
         await eSSP.command('SYNC')
         await eSSP.command('HOST_PROTOCOL_VERSION', { version: 6 })
         console.log('disabling payin')
@@ -625,10 +626,16 @@ let credit_session = async function (input:any) {
 let payout_cash = async function (amount:string) {
     let tag = TAG + " | payout_cash | "
     try {
-        if(!NO_BROADCAST){ return "paied bro"} else{
+        log.info(tag,"Paying out cash!: ",amount)
+        if(NO_BROADCAST){
+            log.info("NO_BROADCAST set not paying")
+            return "paied bro"
+        } else{
             amount = amount.toString()
             if(amount === "0") amount = "1"
             log.info("paying out cash: ",amount)
+            log.info("paying out cash: ",typeof(amount))
+
             //verify
             let result = await eSSP.command('PAYOUT_AMOUNT', {
                 amount:parseInt(amount) * 100,
