@@ -31,11 +31,17 @@ const Buy = () => {
   const [selectedFifties, setselectedFifties] = useState(0);
   const [selectedHundreds, setselectedHundreds] = useState(0);
   const [totalSelected, setTotalSelected] = useState(0);
+    const [isDisabledOnes, setisDisabledOnes] = useState(false);
+    const [isDisabledFives, setisDisabledFives] = useState(false);
+    const [isDisabledTens, setisDisabledTens] = useState(false);
+    const [isDisabledTwenties, setisDisabledTwenties] = useState(false);
+    const [isDisabledFifties, setisDisabledFifties] = useState(false);
+    const [isDisabledHundreds, setisDisabledHundreds] = useState(false);
   const [readyForDeposit, setReadyForDeposit] = useState(false);
   const [address, setAddress] = useState("");
   const [amount, setAmount] = useState("");
-    const [amountIn, setAmountIn] = useState("");
-    const [amountOut, setAmountOut] = useState("");
+  const [amountIn, setAmountIn] = useState("");
+  const [amountOut, setAmountOut] = useState("");
   const [qrcode, setQrcode] = useState({});
   const [usd, setUsd] = useState("");
   const [qrString, setQrString] = useState("");
@@ -108,7 +114,6 @@ const Buy = () => {
             "50":  selectedFifties,
             "100":  selectedHundreds
         }
-
         let totalSelected = 0;
         Object.keys(allBills).forEach(key => {
             totalSelected = totalSelected + (key * allBills[key]);
@@ -195,6 +200,12 @@ const Buy = () => {
             setAvailableTwenties(status.data.cash['20'])
             setAvailableFifties(status.data.cash['50'])
             setAvailableHundreds(status.data.cash['100'])
+            if(status.data.cash['1'] === 0) setisDisabledOnes(true)
+            if(status.data.cash['5'] === 0) setisDisabledFives(true)
+            if(status.data.cash['10'] === 0) setisDisabledTens(true)
+            if(status.data.cash['20'] === 0) setisDisabledTwenties(true)
+            if(status.data.cash['50'] === 0) setisDisabledFifties(true)
+            if(status.data.cash['100'] === 0) setisDisabledHundreds(true)
 
             //total
             let totalSelected = 0;
@@ -338,7 +349,8 @@ const Buy = () => {
                       <QRCode value={qrString} size={300} />
                   </div>
               </div>
-          </div>) : (<div style={{ paddingTop: '50px' }} className="button-container">
+          </div>) : (
+              <div style={{ paddingTop: '100px' }} className="button-container">
               <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
                   <button onClick={onClickOnes} className="button">$1</button> <span className="small-text">available: {availableOnes} selected {selectedOnes}</span>
               </Box>
