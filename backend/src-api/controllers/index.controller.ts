@@ -253,14 +253,15 @@ export class IndexController extends Controller {
     *
     * */
     @Post('/welook')
-    public async welook(@Body() body: BodyWelook): Promise<any> {
+    public async welook(@Body() body: string): Promise<any> {
         let tag = TAG + " | welook | "
         try{
-            if(!body.url) throw Error("missing amount!")
-            if(!body.key) throw Error("missing key!")
+            // if(!body.url) throw Error("missing amount!")
+            // if(!body.key) throw Error("missing key!")
 
             //let url = "https://welook.io/nfc-card?e=663A64295E73B91F5D02841DF91C3251&c=AF0E4C323F8FC7D1&v=1"
-            let input = body.url.split("=")
+            // let input = body.url.split("=")
+            let input = body.split("=")
             log.info(tag,"input: ",input)
             let e = input[1].replace("&c","")
             let c = input[2].replace("&v","")
@@ -269,7 +270,8 @@ export class IndexController extends Controller {
             log.info(tag,"c: ",c)
             // @ts-ignore
             let headers = {
-                "api_key": body.key
+                // "api_key": body.key
+                "api_key": "U2FsdGVkX1+aAvvVzif04qjF0SyYsY29W71/MQ9w9SA="
             }
             //curl -X PUT -H "api_key: U2FsdGVkX1+aAvvVzif04qjF0SyYsY29W71/MQ9w9SA=" -s "https://welook.tech/api/v2/nfc/v2/663A64295E73B91F5D02841DF91C3251/AF0E4C323F8FC7D1"
             let url = "https://welook.tech/api/v2/nfc/v2/"+e+"/"+c

@@ -145,7 +145,7 @@ let onStartAcceptor = async function(){
 
         eSSP = new SspLib({
             id: 0x00,
-            debug: true, // default: false
+            debug: false, // default: false
             timeout: 3000, // default: 3000
             encryptAllCommand: true, // default: true
             fixedKey: '0123456701234567', // default: '0123456701234567'
