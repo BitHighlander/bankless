@@ -342,7 +342,7 @@ export class IndexController extends Controller {
     * */
     @Post('/create/sell')
     public async createSell(@Body() body: BodySell): Promise<any> {
-        let tag = TAG + " | createBuy | "
+        let tag = TAG + " | createSell | "
         try{
             if(!body.amount) throw Error("amount is required!")
             let input  = {

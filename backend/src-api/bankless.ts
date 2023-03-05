@@ -117,16 +117,19 @@ let TXS_FULLFILLED = []
 
 let ACCOUNTS_LP_OWNERS = []
 
-const FEE = 0.003;
-
 function getQuoteForBuy(usdIn: number): number {
-        const usdCredit = usdIn * (1 - FEE)
-	return TOTAL_LUSD * usdCredit / (TOTAL_CASH + usdCredit)
+    const quoteRate = TOTAL_LUSD / (TOTAL_CASH + usdIn)
+	return usdIn * quoteRate
 }
 
-function getQuoteForSell(lusdIn: number): number {
-	const lusdCredit = lusdIn * (1 - FEE)
-	return TOTAL_CASH * lusdCredit / (TOTAL_LUSD + lusdCredit)
+function getQuoteForSellProducingCashValue(usdOut: number): number {
+    const quoteRate = TOTAL_LUSD / (TOTAL_CASH - usdOut)
+	return usdOut * quoteRate
+}
+
+function getQuoteForSellOfExactCryptoValu(lusdIn: number): number {
+    const quoteRate = TOTAL_CASH / (TOTAL_LUSD + lusdIn)
+	return lusdIn * quoteRate
 }
 
 let onStartAcceptor = async function(){
@@ -582,7 +585,7 @@ let fullfill_order = async function (sessionId:string) {
             return txid
         }
         if(CURRENT_SESSION.type === 'sell'){
-            let amountOut = getQuoteForSell(CURRENT_SESSION.SESSION_FUNDING_LUSD ?? 0)
+            let amountOut = getQuoteForSellOfExactCryptoValu(CURRENT_SESSION.SESSION_FUNDING_LUSD ?? 0)
             log.info(tag,"amountOut: ",amountOut)
             amountOut = parseInt(amountOut.toString())
             log.info(tag,"amountOut (rounded): ",amountOut)
@@ -889,7 +892,7 @@ let set_session_sell = async function (input) {
         if(!amount) throw Error("no amount!")
 
         //amountIn
-        let amountIn = getQuoteForSell(amount)
+        let amountIn = getQuoteForSellProducingCashValue(amount)
         //address
         let address = await signer.getAddress(WALLET_MAIN)
         
