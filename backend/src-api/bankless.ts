@@ -658,12 +658,14 @@ let payout_cash = async function (amount:string) {
             log.info("paying out cash: ",typeof(amount))
 
             //verify
+            const dispensed = new Promise(resolve => eSSP.once("DISPENSED", (x) => resolve(x)))
             let result = await eSSP.command('PAYOUT_AMOUNT', {
                 amount:parseInt(amount) * 100,
                 country_code: 'USD',
                 test: false,
             })
             log.info("result: ",result)
+            await dispensed
         }
         return "done"
     } catch (e) {
