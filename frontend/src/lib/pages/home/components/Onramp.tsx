@@ -132,6 +132,7 @@ const Onramp = () => {
         setTxid(status.session.txid)
         setSent(true)
         setSessionTypeSelected(true)
+        setTimeout(window.location.reload, 45000)
       }
     } catch (e) {
       // eslint-disable-next-line no-console

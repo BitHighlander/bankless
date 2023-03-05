@@ -75,19 +75,6 @@ const Buy = () => {
             if(status && status.session && status.session.SESSION_FUNDING_LUSD){
                 // @ts-ignore
                 setUsd(status.session.SESSION_FUNDING_LUSD)
-
-/*                //fullfill
-                const body = {
-                    sessionId:"test"
-                };
-                console.log("body: ",body)
-                let submitResp = await axios.post(
-                    "http://127.0.0.1:4000/api/v1/fullfill",
-                    body
-                );
-                submitResp = submitResp.data
-                // eslint-disable-next-line no-console
-                console.log("submitResp: ", submitResp);*/
             }
 
         } catch (e) {
