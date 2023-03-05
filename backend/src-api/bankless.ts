@@ -380,7 +380,7 @@ let sub_for_payments = async function(){
                     log.info("SESSION_FUNDING_LUSD: ",CURRENT_SESSION.SESSION_FUNDING_LUSD)
                     let payment = {
                         txid:txids[i],
-                        asset:"LSD",
+                        asset:"LUSD",
                         session:CURRENT_SESSION.sessionId,
                         amount:paymentAmountLusd,
                         funded:true,
