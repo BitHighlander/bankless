@@ -17,7 +17,7 @@ const uuid = require('short-uuid');
 const log = require('@pioneer-platform/loggerdog')();
 const {subscriber, publisher, redis, redisQueue} = require('@pioneer-platform/default-redis')
 let signer = require("eth_mnemonic_signer")
-
+let os = require("os")
 
 let wait = require('wait-promise');
 let sleep = wait.sleep;
@@ -188,11 +188,13 @@ let onStartAcceptor = async function(){
             }
             if(CURRENT_SESSION.sessionId)credit_session(input)
         })
-
-        //@TODO detectOS and select correct string
-        await eSSP.open('/dev/ttyUSB0', serialPortConfig)
-        //dev/tty.usbserial-AQ031MU7
-        //await eSSP.open('/dev/tty.usbserial-AQ031MU7', serialPortConfig)
+        let system = os.platform()
+        log.info("system: ",system)
+        if(system === "darwin"){
+            await eSSP.open('/dev/tty.usbserial-AQ031MU7', serialPortConfig)
+        } else {
+            await eSSP.open('/dev/ttyUSB0', serialPortConfig)
+        }
         await eSSP.command('SYNC')
         await eSSP.command('HOST_PROTOCOL_VERSION', { version: 6 })
         console.log('disabling payin')
