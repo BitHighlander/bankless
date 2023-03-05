@@ -350,7 +350,7 @@ const Buy = () => {
               <Button onClick={onSubmitWithdrawal}>Payout Cash</Button>
           </div>) : (
             <div>
-            <table>
+            <table style={{textAlign: "center"}}>
                 <tr>
                     <th></th>
                     <td>
