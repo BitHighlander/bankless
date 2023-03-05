@@ -467,6 +467,8 @@ module.exports = {
     sendToAddress: async function (address:string,amount:number) {
         return send_to_address(address,amount);
     },
+    //general
+
     //bill acceptor
     payout: async function (amount:string) {
         return payout_cash(amount);

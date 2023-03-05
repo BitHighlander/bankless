@@ -6,6 +6,12 @@ import {
   FormHelperText,
   Input,
   Button,
+  Slider,
+  SliderTrack,
+  SliderFilledTrack,
+  SliderThumb,
+  SliderMark,
+  Tooltip,
 } from "@chakra-ui/react";
 import axios from "axios";
 import React, { useEffect, useState } from "react";
@@ -20,6 +26,8 @@ const qr = new EthereumQRPlugin();
 const socket = io("ws://127.0.0.1:4000");
 
 const Onramp = () => {
+  const [sliderValue, setSliderValue] = React.useState(5)
+  const [showTooltip, setShowTooltip] = React.useState(false)
   const [isConnected, setIsConnected] = useState(socket.connected);
   const [lastPong, setLastPong] = useState(null);
   const [sessionId, setSessionId] = React.useState(false);
@@ -34,11 +42,11 @@ const Onramp = () => {
   const [address, setAddress] = React.useState("");
   const handleInputChangeAddress = (e: any) => setAddress(e.target.value);
 
-  const handleError = (error) => {
+  const handleError = (error: any) => {
     console.error(error);
   }
 
-  const handleScan = (data) => {
+  const handleScan = (data: { text: React.SetStateAction<string>; }) => {
     if (data) {
       console.log("data: ",data)
       console.log("data.text: ",data.text)
@@ -58,6 +66,12 @@ const Onramp = () => {
 
     socket.on("disconnect", () => {
       setIsConnected(false);
+    });
+
+    socket.on("address", (message:any) => {
+      console.log("setAddress: ",message);
+      console.log("setAddress: ",message.address);
+      setAddress(message.address);
     });
 
     socket.on("message", (message:any) => {
@@ -130,6 +144,7 @@ const Onramp = () => {
         console.log("onCheckDollars: ");
         setReadyForPayout(true)
       }
+      // @ts-ignore
       if(status && status.session && status.session.txid){
         // @ts-ignore
         setTxid(status.session.txid)
@@ -196,6 +211,25 @@ const Onramp = () => {
 
   const isError = false;
 
+  const handleQuote = async function (v) {
+    try {
+      // eslint-disable-next-line no-console
+      console.log("quote: ",v);
+        //get max
+
+      //get percent of max
+      //round to nearest dollar
+      //get qoute out of that
+
+      //handleQuote
+
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(e);
+    }
+  };
+
+
   return (
     <Grid textAlign="center" gap={2}>
       OnRamp to LUSD
@@ -208,7 +242,8 @@ const Onramp = () => {
                   <Spinner />
                 </div>)}
           </div>) : (<div>
-            {readyForPayout ? (<div><div>
+            {readyForPayout ? (<div>
+              <div>
               <p>USD: {usd || "0"}</p>
             </div> <Button
                 mt={4}
@@ -218,7 +253,41 @@ const Onramp = () => {
                 onClick={onDone}
             >
               Payout Crypto
-            </Button></div>):(<div>(deposit cash....)</div>)}
+            </Button></div>):(<div>
+              <Slider
+                  id='slider'
+                  defaultValue={5}
+                  min={0}
+                  max={100}
+                  colorScheme='teal'
+                  onChange={(v) => handleQuote(v)}
+                  onMouseEnter={() => setShowTooltip(true)}
+                  onMouseLeave={() => setShowTooltip(false)}
+              >
+                <SliderMark value={25} mt='1' ml='-2.5' fontSize='sm'>
+                  25%
+                </SliderMark>
+                <SliderMark value={50} mt='1' ml='-2.5' fontSize='sm'>
+                  50%
+                </SliderMark>
+                <SliderMark value={75} mt='1' ml='-2.5' fontSize='sm'>
+                  75%
+                </SliderMark>
+                <SliderTrack>
+                  <SliderFilledTrack />
+                </SliderTrack>
+                <Tooltip
+                    hasArrow
+                    bg='teal.500'
+                    color='white'
+                    placement='top'
+                    isOpen={showTooltip}
+                    label={`${sliderValue}%`}
+                >
+                  <SliderThumb />
+                </Tooltip>
+              </Slider>
+              (deposit cash....)</div>)}
           </div>)}
         </div>
       ) : (

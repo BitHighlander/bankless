@@ -42,6 +42,7 @@ const {subscriber, publisher, redis, redisQueue} = require('@pioneer-platform/de
 // subscriber.subscribe('payments', defaultListener);
 
 subscriber.subscribe('payments')
+subscriber.subscribe('address')
 subscriber.on('message', async function (channel, payloadS) {
     let tag = TAG + ' | publishToFront | ';
     try {
@@ -49,10 +50,14 @@ subscriber.on('message', async function (channel, payloadS) {
         //Push event over socket
         if(channel === 'payments'){
             let payload = JSON.parse(payloadS)
-            payload.event = 'transaction'
+            payload.event = 'payments'
             payloadS = JSON.stringify(payload)
         }
-
+        if(channel === 'address'){
+            let payload = JSON.parse(payloadS)
+            payload.event = 'address'
+            payloadS = JSON.stringify(payload)
+        }
         //
         console.log("message: ",payloadS)
         io.emit('message', payloadS);
