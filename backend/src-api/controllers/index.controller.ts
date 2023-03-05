@@ -247,52 +247,52 @@ export class IndexController extends Controller {
         }
     }
 
-    /*
-        push welook
-
-    */
-
-    @Get('/push/welook/:link')
-    public async weLookPush(link:string,api_key:string) {
-        let tag = TAG + " | link | "
-        try{
-            //
-            //let url = "https://welook.io/nfc-card?e=663A64295E73B91F5D02841DF91C3251&c=AF0E4C323F8FC7D1&v=1"
-            // @ts-ignore
-            let input = link.split("=")
-            log.info(tag,"input: ",input)
-            let e = input[1]
-            let c = input[2]
-            let v = input[4]
-            // log.info(tag,"e: ",e)
-            // log.info(tag,"c: ",c)
-            // log.info(tag,"v: ",v)
-            "https://welook"
-            // @ts-ignore
-            let headers = {
-                "api_key": api_key
-            }
-            let url = "https://welook.tech/api/v2/nfc/v2/"+e+"/"+c
-            console.log(url, headers)
-            // @ts-ignore
-            const result = await axios.get(url, headers);
-            log.info("result:",result.data)
-            let addressScaned = result.data.data.address
-            let data = result.data.data
-            //result.data
-            // @ts-ignore
-            let address = publisher.publish('address',JSON.parse({address:addressScaned, data}))
-            return(result)
-        }catch(e){
-            let errorResp:Error = {
-                success:false,
-                tag,
-                e
-            }
-            log.error(tag,"e: ",{errorResp})
-            throw new ApiError("error",503,"error: "+e.toString());
-        }
-    }
+    // /*
+    //     push welook
+    //
+    // */
+    //
+    // @Get('/push/welook/:link')
+    // public async weLookPush(link:string,api_key:string) {
+    //     let tag = TAG + " | link | "
+    //     try{
+    //         //
+    //         //let url = "https://welook.io/nfc-card?e=663A64295E73B91F5D02841DF91C3251&c=AF0E4C323F8FC7D1&v=1"
+    //         // @ts-ignore
+    //         let input = link.split("=")
+    //         log.info(tag,"input: ",input)
+    //         let e = input[1]
+    //         let c = input[2]
+    //         let v = input[4]
+    //         // log.info(tag,"e: ",e)
+    //         // log.info(tag,"c: ",c)
+    //         // log.info(tag,"v: ",v)
+    //         "https://welook"
+    //         // @ts-ignore
+    //         let headers = {
+    //             "api_key": api_key
+    //         }
+    //         let url = "https://welook.tech/api/v2/nfc/v2/"+e+"/"+c
+    //         console.log(url, headers)
+    //         // @ts-ignore
+    //         const result = await axios.get(url, headers);
+    //         log.info("result:",result.data)
+    //         let addressScaned = result.data.data.address
+    //         let data = result.data.data
+    //         //result.data
+    //         // @ts-ignore
+    //         let address = publisher.publish('address',JSON.parse({address:addressScaned, data}))
+    //         return(result)
+    //     }catch(e){
+    //         let errorResp:Error = {
+    //             success:false,
+    //             tag,
+    //             e
+    //         }
+    //         log.error(tag,"e: ",{errorResp})
+    //         throw new ApiError("error",503,"error: "+e.toString());
+    //     }
+    // }
 
     /*
     * HACK DEPOSIT
