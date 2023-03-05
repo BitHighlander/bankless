@@ -1,15 +1,8 @@
-import {
-  Grid,
-  Box,
-    Button
-} from "@chakra-ui/react";
+import { Button } from "@chakra-ui/react";
 import "../../../styles/ButtonContainer.css";
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import io from "socket.io-client";
-import EthereumQRPlugin from "@dri/ethereum-qr-code";
-// later in code
-const qr = new EthereumQRPlugin();
 import QRCode from 'qrcode.react';
 
 
