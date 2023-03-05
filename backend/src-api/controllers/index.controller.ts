@@ -262,24 +262,28 @@ export class IndexController extends Controller {
             //let url = "https://welook.io/nfc-card?e=663A64295E73B91F5D02841DF91C3251&c=AF0E4C323F8FC7D1&v=1"
             let input = body.url.split("=")
             log.info(tag,"input: ",input)
-            let e = input[1]
-            let c = input[2]
+            let e = input[1].replace("&c","")
+            let c = input[2].replace("&v","")
             let v = input[4]
-            "https://welook"
+            log.info(tag,"e: ",e)
+            log.info(tag,"c: ",c)
             // @ts-ignore
             let headers = {
                 "api_key": body.key
             }
+            //curl -X PUT -H "api_key: U2FsdGVkX1+aAvvVzif04qjF0SyYsY29W71/MQ9w9SA=" -s "https://welook.tech/api/v2/nfc/v2/663A64295E73B91F5D02841DF91C3251/AF0E4C323F8FC7D1"
             let url = "https://welook.tech/api/v2/nfc/v2/"+e+"/"+c
-
-            // @ts-ignore
-            const result = await axios.get(url, headers);
-            log.info("result:",result.data)
-            let addressScaned = result.data.data.address
-            let data = result.data.data
+            log.info(tag,"url: ",url)
+            log.info(tag,"headers: ",headers)
+            let resp:any = await axios.put(url, {}, {
+                headers
+            })
+            log.info("result:",resp)
+            let addressScaned = resp.data.data.address
+            let data = resp.data.data
             //result.data
             // @ts-ignore
-            let address = publisher.publish('address',JSON.parse({address:addressScaned, data}))
+            let address = publisher.publish('address',JSON.stringify({address:addressScaned, data}))
 
 
             return true
