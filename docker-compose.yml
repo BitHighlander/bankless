@@ -18,6 +18,12 @@ services:
         links:
             - mongodb
             - redis
+        healthcheck:
+          test: ["CMD", "node", "/app/healthcheck.js"]
+          interval: 1s
+          timeout: 3s
+          retries: 5
+          start_period: 600s
     mongodb:
         image: mongo:4-focal
         restart: on-failure

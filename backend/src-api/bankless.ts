@@ -803,7 +803,7 @@ let get_status = async function () {
         });
 
         let output:any = {
-            billacceptor:"online",
+            billacceptor: ACCEPTOR_ONLINE ? "online" : "offline",
             hotwallet:"online",
             balanceUSD: TOTAL_CASH, //TODO get this from hardware
             balanceLUSD: TOTAL_LUSD, //TODO get this from hotwallet
