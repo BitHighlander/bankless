@@ -88,8 +88,8 @@ const Home = () => {
           </TabPanels>
         </Tabs>
       </div>) : (
-          <div>
-        <Button alignSelf="center" onClick={startSession}>Start</Button>
+          <div align='center'>
+        <Button colorScheme='green' size='lg' alignSelf="center" onClick={startSession}>Start</Button>
       </div>
       )}
       {/*<Button onClick={() => setShowStats(!showStats)}>show stats</Button>*/}
