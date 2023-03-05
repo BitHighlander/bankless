@@ -54,9 +54,9 @@ const Onramp = () => {
     <table style={{textAlign: "left", verticalAlign: "top"}}>
       <tr><th>Bill Acceptor</th><td>{status.billacceptor}</td></tr>
       <tr><th>Hot Wallet</th><td>{status.hotwallet}</td></tr>
-      <tr><th>Total USD</th><td>{status.balanceUSD}</td></tr>
-      <tr><th>Total LUSD</th><td>{status.balanceLUSD}</td></tr>
-      <tr><th>Rate</th><td>{status.rate} USD per LUSD</td></tr>
+      <tr><th>Total USD</th><td>{Number(status.balanceUSD).toFixed(2)}</td></tr>
+      <tr><th>Total LUSD</th><td>{Number(status.balanceLUSD).toFixed(2)}</td></tr>
+      <tr><th>Rate</th><td>{Number(status.rate).toFixed(2)} USD per LUSD</td></tr>
       <tr><th>Cash</th><td>
 	<table>
 		<tr><th>$1</th><th>$5</th><th>$10</th><th>$20</th><th>$50</th><th>$100</th></tr>
