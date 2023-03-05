@@ -127,7 +127,7 @@ function getQuoteForSellProducingCashValue(usdOut: number): number {
 	return usdOut * quoteRate
 }
 
-function getQuoteForSellOfExactCryptoValu(lusdIn: number): number {
+function getQuoteForSellOfExactCryptoValue(lusdIn: number): number {
     const quoteRate = TOTAL_CASH / (TOTAL_LUSD + lusdIn)
 	return lusdIn * quoteRate
 }
@@ -478,11 +478,12 @@ module.exports = {
     //fullfill
     clear: async function (sessionId:string) {
         clear_session()
+        await countBills()
         return true;
     },
 }
 
-let clear_session = async function () {
+let clear_session = function () {
     let tag = TAG + " | clear_session | "
     try {
         CURRENT_SESSION = {
@@ -497,7 +498,6 @@ let clear_session = async function () {
             SESSION_FUNDING_LUSD: 0,
             SESSION_FULLFILLED: false,
         }
-        countBills()
     } catch (e) {
         console.error(tag, "e: ", e)
         throw e
@@ -581,16 +581,18 @@ let fullfill_order = async function (sessionId:string) {
             let addressFullFill = CURRENT_SESSION.address
             clear_session()
             let txid = await send_to_address(addressFullFill,amountOut)
+            await countBills()
             CURRENT_SESSION.txid = txid
             return txid
         }
         if(CURRENT_SESSION.type === 'sell'){
-            let amountOut = getQuoteForSellOfExactCryptoValu(CURRENT_SESSION.SESSION_FUNDING_LUSD ?? 0)
+            let amountOut = getQuoteForSellOfExactCryptoValue(CURRENT_SESSION.SESSION_FUNDING_LUSD ?? 0)
             log.info(tag,"amountOut: ",amountOut)
             amountOut = parseInt(amountOut.toString())
             log.info(tag,"amountOut (rounded): ",amountOut)
             clear_session()
             let txid = await payout_cash(amountOut.toString())
+            await countBills()
             CURRENT_SESSION.txid = txid
 
             return txid
@@ -602,6 +604,7 @@ let fullfill_order = async function (sessionId:string) {
             //credit owner
             let txid = "bla"
             clear_session()
+            await countBills()
             return txid
         }
         if(CURRENT_SESSION.type === 'lpAddAsym'){
