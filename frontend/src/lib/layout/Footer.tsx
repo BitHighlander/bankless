@@ -1,7 +1,34 @@
-import { Flex, Link, Text } from "@chakra-ui/react";
+import { Flex, Link, Text, Button } from "@chakra-ui/react";
 import Rate from "./Rate";
 import Session from "./Session";
+import axios from "axios";
+
 const Footer = () => {
+
+  const clearSession = async function () {
+    try {
+      // eslint-disable-next-line no-console
+      console.log("onDone: ");
+
+      //fullfill
+      const body = {
+        sessionId:"test"
+      };
+      let submitResp = await axios.post(
+          "http://127.0.0.1:4000/api/v1/clear",
+          body
+      );
+      submitResp = submitResp.data
+      // eslint-disable-next-line no-console
+      console.log("submitResp: ", submitResp);
+      window.location.reload();
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(e);
+    }
+  };
+
+
   return (
     <Flex
       as="footer"
@@ -14,7 +41,7 @@ const Footer = () => {
         <Rate />
         {/*<br/>*/}
         {/*<Session />*/}
-        {/*<Button onClick={endSession}>end session</Button>*/}
+        <Button onClick={clearSession}>end session</Button>
       </Text>
     </Flex>
   );
