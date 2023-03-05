@@ -1,10 +1,8 @@
-import { Grid } from "@chakra-ui/react";
 import axios from "axios";
 import React, { useEffect, useState } from "react";
 
 const Onramp = () => {
   const [availableOnes, setAvailableOnes] = useState(0);
-  const [availableTwos, setAvailableTwos] = useState(0);
   const [availableFives, setAvailableFives] = useState(0);
   const [availableTens, setAvailableTens] = useState(0);
   const [availableTwenties, setAvailableTwenties] = useState(0);
@@ -27,7 +25,6 @@ const Onramp = () => {
       );
       setStatus(status.data);
       setAvailableOnes(status.data.cash['1'])
-      setAvailableTwos(status.data.cash['2'])
       setAvailableFives(status.data.cash['5'])
       setAvailableTens(status.data.cash['10'])
       setAvailableTwenties(status.data.cash['20'])
@@ -62,8 +59,8 @@ const Onramp = () => {
       <tr><th>Rate</th><td>{status.rate} USD per LUSD</td></tr>
       <tr><th>Cash</th><td>
 	<table>
-		<tr><th>$1</th><th>$2</th><th>$5</th><th>$10</th><th>$20</th><th>$50</th><th>$100</th></tr>
-		<tr><td>{availableOnes}</td><td>{availableTwos}</td><td>{availableFives}</td><td>{availableTens}</td><td>{availableTwenties}</td><td>{availableFifties}</td><td>{availableHundreds}</td></tr>
+		<tr><th>$1</th><th>$5</th><th>$10</th><th>$20</th><th>$50</th><th>$100</th></tr>
+		<tr><td>{availableOnes}</td><td>{availableFives}</td><td>{availableTens}</td><td>{availableTwenties}</td><td>{availableFifties}</td><td>{availableHundreds}</td></tr>
 	</table>
       </td></tr>
     </table>
