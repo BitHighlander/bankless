@@ -1,5 +1,5 @@
 {
-  "name": "service-1",
+  "name": "bankless-api",
   "version": "1.0.0",
   "scripts": {
     "clean": "rm -R node_modules api dist src-api/routes",
