@@ -76,6 +76,11 @@ const Onramp = () => {
 
     socket.on("message", (message:any) => {
       console.log("message: ",message);
+      let messageObj = JSON.parse(message);
+      if(messageObj.event === "address"){
+        console.log("setAddress: ",messageObj.address);
+        setAddress(messageObj.address);
+      }
       onCheckDollars()
     });
 
