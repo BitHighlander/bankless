@@ -95,34 +95,6 @@ const Buy = () => {
             console.error(e);
         }
     };
-    
-  const tallySelected = async function () {
-    try {
-        //go to API get this data
-        let allBills = {
-            "1": selectedOnes,
-            "5": selectedFives,
-            "10":  selectedTens,
-            "20":  selectedTwenties,
-            "50":  selectedFifties,
-            "100":  selectedHundreds
-        }
-        let totalSelected = 0;
-        Object.keys(allBills).forEach(key => {
-            // @ts-ignore
-            totalSelected = totalSelected + (key * allBills[key]);
-        });
-        setTotalSelected(totalSelected);
-
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error(e);
-    }
-  };
-    // onstart get data
-    useEffect(() => {
-        tallySelected();
-    }, [totalSelected]);
 
 
     const onSubmit = async function () {
@@ -322,7 +294,35 @@ const Buy = () => {
             console.error(e);
         }
     };
-    
+
+    const tallySelected = async function () {
+        try {
+            //go to API get this data
+            let allBills = {
+                "1": selectedOnes,
+                "5": selectedFives,
+                "10":  selectedTens,
+                "20":  selectedTwenties,
+                "50":  selectedFifties,
+                "100":  selectedHundreds
+            }
+            let totalSelected = 0;
+            Object.keys(allBills).forEach(key => {
+                // @ts-ignore
+                totalSelected = totalSelected + (key * allBills[key]);
+            });
+            setTotalSelected(totalSelected);
+
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error(e);
+        }
+    };
+    // onstart get data
+    useEffect(() => {
+        tallySelected();
+    }, [totalSelected, onClickOnes, onClickHundreds, onClickFifties, onClickFives, onClickTens, onClickTwenties]);
+
   return (
       <div>
           {readyForDeposit ? (<div>
