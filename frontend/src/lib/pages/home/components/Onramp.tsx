@@ -318,11 +318,12 @@ const Onramp = () => {
             >
               Continue
             </Button>
-            <QrReader
-                delay={100}
-                onError={handleError}
-                onResult={handleScan}
-                style={{ width: "10%", height:"10%" }}></QrReader>
+            <div style={{width: "500px", margin: "auto"}}>
+              <QrReader
+                  delay={500}
+                  onError={handleError}
+                  onResult={handleScan}></QrReader>
+            </div>
           </FormControl>
         </div>
       )}
