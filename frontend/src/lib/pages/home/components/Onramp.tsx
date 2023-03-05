@@ -242,7 +242,7 @@ const Onramp = () => {
               Continue
             </Button>
             <QrReader
-                delay={300}
+                delay={100}
                 onError={handleError}
                 onResult={handleScan}
                 style={{ width: "10%", height:"10%" }}></QrReader>
