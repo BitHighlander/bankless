@@ -30,7 +30,7 @@ const Onramp = () => {
 
   return (
     <Grid textAlign="center" gap={2}>
-      Rate LUSD: {status.rate}
+      Rate DAI: {status.rate}
     </Grid>
   );
 };

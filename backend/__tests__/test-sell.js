@@ -36,7 +36,7 @@ let run_test = async () => {
         const bodyFund = {
             sessionId:status.session.sessionId,
             amount:amountIn.toString(),
-            asset:"LUSD"
+            asset:"DAI"
         };
         console.log("bodyFund: ",bodyFund)
         let respFund = await axios.post(
@@ -53,11 +53,11 @@ let run_test = async () => {
         );
         status2 = status2.data
         console.log("status2: ",status2)
-        assert(status2.session.SESSION_FUNDING_LUSD)
+        assert(status2.session.SESSION_FUNDING_DAI)
 
         //fullfill
         const bodyFullfill = {
-            amount:status2.session.SESSION_FUNDING_LUSD,
+            amount:status2.session.SESSION_FUNDING_DAI,
             sessionId:status.session.sessionId
         };
         console.log("bodyFullfill: ",bodyFullfill)

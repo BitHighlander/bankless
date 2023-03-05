@@ -72,9 +72,9 @@ const Buy = () => {
             status = status.data
             console.log("status: ",status)
             // @ts-ignore
-            if(status && status.session && status.session.SESSION_FUNDING_LUSD){
+            if(status && status.session && status.session.SESSION_FUNDING_DAI){
                 // @ts-ignore
-                setUsd(status.session.SESSION_FUNDING_LUSD)
+                setUsd(status.session.SESSION_FUNDING_DAI)
             }
 
         } catch (e) {
@@ -316,7 +316,7 @@ const Buy = () => {
             <table style={{textAlign: "left"}}>
                 <tr><th>Address</th><td>{address}</td></tr>
                 <tr><th>Cash to be purchased</th><td>${Number(amountOut).toFixed(2)}</td></tr>
-                <tr><th>LUSD to deposit</th><td>{(Math.ceil(Number(amountIn) * 100) / 100).toFixed(2)}</td></tr>
+                <tr><th>DAI to deposit</th><td>{(Math.ceil(Number(amountIn) * 100) / 100).toFixed(2)}</td></tr>
             </table>
               <div
                   style={{

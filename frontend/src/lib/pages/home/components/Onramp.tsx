@@ -237,7 +237,7 @@ const Onramp = () => {
 
   return (
     <Grid textAlign="center" gap={2}>
-      OnRamp to LUSD
+      OnRamp to DAI
       {sessionTypeSelected ? (
         <div>
           {sending ? (<div>

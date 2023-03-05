@@ -25,7 +25,7 @@ let run_test = async () => {
 
         //fullfill
         const bodyFullfill = {
-            amount:status.session.SESSION_FUNDING_LUSD,
+            amount:status.session.SESSION_FUNDING_DAI,
             sessionId:status.session.sessionId
         };
         console.log("bodyFullfill: ",bodyFullfill)

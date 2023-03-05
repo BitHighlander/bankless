@@ -4,7 +4,7 @@
 
     start LP session
 
-    depsoit LUSD
+    depsoit DAI
 
     deposit USD
 

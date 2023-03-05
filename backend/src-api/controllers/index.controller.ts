@@ -366,7 +366,7 @@ export class IndexController extends Controller {
     }
 
     /*
-    * buy lusd
+    * buy dai
     *
     *
     * */
@@ -389,7 +389,7 @@ export class IndexController extends Controller {
     }
 
     /*
-    * buy lusd
+    * buy dai
     *
     *
     * */
@@ -415,7 +415,7 @@ export class IndexController extends Controller {
     }
 
     /*
-    * sell lusd
+    * sell dai
     *
     *
     * */

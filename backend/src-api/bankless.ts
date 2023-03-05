@@ -73,13 +73,13 @@ interface lp {
 
 //STATE @TODO move this to DB?
 let balanceUSD = 0
-let balanceLUSD = 0
+let balanceDAI = 0
 let currentSession:any //@TODO session must use session Types
 
 const Web3 = require("web3")
 let service = "https://mainnet.infura.io/v3/fb05c87983c4431baafd4600fd33de7e"
 let WEB3 = new Web3(new Web3.providers.HttpProvider(service))
-let LUSD_CONTRACT = "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0"
+let DAI_CONTRACT = "0x6b175474e89094c44da98b954eedeac495271d0f"
 
 //bill acceptor
 let eSSP:any
@@ -94,7 +94,7 @@ let ALL_BILLS = {
     "100":  1,
 }
 let TOTAL_CASH = 0
-let TOTAL_LUSD = 0
+let TOTAL_DAI = 0
 //current session
 let CURRENT_SESSION: {
     start?: any,
@@ -106,7 +106,7 @@ let CURRENT_SESSION: {
     amountIn?: number,
     amountOut?: number,
     SESSION_FUNDING_USD?: number,
-    SESSION_FUNDING_LUSD?: number,
+    SESSION_FUNDING_DAI?: number,
     SESSION_FULLFILLED?: boolean,
 }
 let TXIDS_REVIEWED = []
@@ -118,18 +118,18 @@ let TXS_FULLFILLED = []
 let ACCOUNTS_LP_OWNERS = []
 
 function getQuoteForBuy(usdIn: number): number {
-    const quoteRate = TOTAL_LUSD / (TOTAL_CASH + usdIn)
+    const quoteRate = TOTAL_DAI / (TOTAL_CASH + usdIn)
 	return usdIn * quoteRate
 }
 
 function getQuoteForSellProducingCashValue(usdOut: number): number {
-    const quoteRate = TOTAL_LUSD / (TOTAL_CASH - usdOut)
+    const quoteRate = TOTAL_DAI / (TOTAL_CASH - usdOut)
 	return usdOut * quoteRate
 }
 
-function getQuoteForSellOfExactCryptoValue(lusdIn: number): number {
-    const quoteRate = TOTAL_CASH / (TOTAL_LUSD + lusdIn)
-	return lusdIn * quoteRate
+function getQuoteForSellOfExactCryptoValue(daiIn: number): number {
+    const quoteRate = TOTAL_CASH / (TOTAL_DAI + daiIn)
+	return daiIn * quoteRate
 }
 
 let onStartAcceptor = async function(){
@@ -378,21 +378,21 @@ let sub_for_payments = async function(){
                         },
                     };
                     let respTx = await axios(body)
-                    let paymentAmountLusd = 0
+                    let paymentAmountDai = 0
                     for(let i = 0; i < respTx.data.tokenTransfers.length; i++){
                         let transfer = respTx.data.tokenTransfers[i]
-                        if(transfer["symbol"] == "LUSD" && transfer.contract === LUSD_CONTRACT){
-                            paymentAmountLusd = parseInt(transfer.value) / 1000000000000000000
-                            CURRENT_SESSION.SESSION_FUNDING_LUSD = (CURRENT_SESSION.SESSION_FUNDING_LUSD ?? 0) + paymentAmountLusd
+                        if(transfer["symbol"] == "DAI" && transfer.contract === DAI_CONTRACT){
+                            paymentAmountDai = parseInt(transfer.value) / 1000000000000000000
+                            CURRENT_SESSION.SESSION_FUNDING_DAI = (CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0) + paymentAmountDai
                         }
                     }
-                    log.info("paymentAmountLusd: ",paymentAmountLusd)
-                    log.info("SESSION_FUNDING_LUSD: ",CURRENT_SESSION.SESSION_FUNDING_LUSD)
+                    log.info("paymentAmountDai: ",paymentAmountDai)
+                    log.info("SESSION_FUNDING_DAI: ",CURRENT_SESSION.SESSION_FUNDING_DAI)
                     let payment = {
                         txid:txids[i],
-                        asset:"LUSD",
+                        asset:"DAI",
                         session:CURRENT_SESSION.sessionId,
-                        amount:paymentAmountLusd,
+                        amount:paymentAmountDai,
                         funded:true,
                         fullfilled:false
                     }
@@ -504,7 +504,7 @@ let clear_session = function () {
             amountIn: null,
             amountOut: null,
             SESSION_FUNDING_USD: 0,
-            SESSION_FUNDING_LUSD: 0,
+            SESSION_FUNDING_DAI: 0,
             SESSION_FULLFILLED: false,
         }
     } catch (e) {
@@ -549,14 +549,14 @@ let onStartSession = async function(){
         ];
         let address = await signer.getAddress(WALLET_MAIN)
         console.log("address: ",address)
-        const newContract = new WEB3.eth.Contract(minABI, LUSD_CONTRACT);
+        const newContract = new WEB3.eth.Contract(minABI, DAI_CONTRACT);
         const decimals = await newContract.methods.decimals().call();
         console.log("decimals: ",decimals)
         const balanceBN = await newContract.methods.balanceOf(address).call()
         console.log("input: balanceBN: ",balanceBN)
         // @ts-ignore
         let tokenBalance = parseInt(balanceBN/Math.pow(10, decimals))
-        TOTAL_LUSD = await tokenBalance
+        TOTAL_DAI = await tokenBalance
 
         //@TODO get fullfilled from DB
 
@@ -567,7 +567,7 @@ let onStartSession = async function(){
 
         //start session
         log.info(tag,"TOTAL_CASH: ",TOTAL_CASH)
-        log.info(tag,"TOTAL_LUSD: ",TOTAL_LUSD)
+        log.info(tag,"TOTAL_DAI: ",TOTAL_DAI)
 
         //get LP owners
 
@@ -595,7 +595,7 @@ let fullfill_order = async function (sessionId:string) {
             return txid
         }
         if(CURRENT_SESSION.type === 'sell'){
-            let amountOut = getQuoteForSellOfExactCryptoValue(CURRENT_SESSION.SESSION_FUNDING_LUSD ?? 0)
+            let amountOut = getQuoteForSellOfExactCryptoValue(CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0)
             log.info(tag,"amountOut: ",amountOut)
             amountOut = parseInt(amountOut.toString())
             log.info(tag,"amountOut (rounded): ",amountOut)
@@ -608,7 +608,7 @@ let fullfill_order = async function (sessionId:string) {
         }
         if(CURRENT_SESSION.type === 'lpAdd'){
             //caluate LP tokens
-            // let lpTokens = await calculate_lp_tokens(CURRENT_SESSION.SESSION_FUNDING_LUSD ?? 0,CURRENT_SESSION.CURRENT_SESSION.SESSION_FUNDING_USD ?? 0)
+            // let lpTokens = await calculate_lp_tokens(CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0,CURRENT_SESSION.CURRENT_SESSION.SESSION_FUNDING_USD ?? 0)
 
             //credit owner
             let txid = "bla"
@@ -642,8 +642,8 @@ let credit_session = async function (input:any) {
         if(input.asset === 'USD'){
             CURRENT_SESSION.SESSION_FUNDING_USD = (CURRENT_SESSION.SESSION_FUNDING_USD ?? 0) + parseInt(input.amount)
         }
-        if(input.asset === 'LUSD'){
-            CURRENT_SESSION.SESSION_FUNDING_LUSD = (CURRENT_SESSION.SESSION_FUNDING_LUSD ?? 0) + input.amount
+        if(input.asset === 'DAI'){
+            CURRENT_SESSION.SESSION_FUNDING_DAI = (CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0) + input.amount
         }
         publisher.publish('payments',JSON.stringify(input))
         return true
@@ -750,7 +750,7 @@ let send_to_address = async function (address:string,amount:number) {
             gasLimit:gasLimit,
             value: "0x0",
             "from": addressFrom,
-            "to": LUSD_CONTRACT,
+            "to": DAI_CONTRACT,
             "data": tokenData,
             chainId:1,
         }
@@ -814,7 +814,7 @@ let get_balance = async function () {
         ];
         let address = await signer.getAddress(WALLET_MAIN)
         console.log("address: ",address)
-        const newContract = new WEB3.eth.Contract(minABI, LUSD_CONTRACT);
+        const newContract = new WEB3.eth.Contract(minABI, DAI_CONTRACT);
         const decimals = await newContract.methods.decimals().call();
         console.log("decimals: ",decimals)
         const balanceBN = await newContract.methods.balanceOf(address).call()
@@ -840,8 +840,8 @@ let get_status = async function () {
             billacceptor: ACCEPTOR_ONLINE ? "online" : "offline",
             hotwallet:"online",
             balanceUSD: TOTAL_CASH, //TODO get this from hardware
-            balanceLUSD: TOTAL_LUSD, //TODO get this from hotwallet
-            rate: TOTAL_CASH / TOTAL_LUSD,
+            balanceDAI: TOTAL_DAI, //TODO get this from hotwallet
+            rate: TOTAL_CASH / TOTAL_DAI,
             session: CURRENT_SESSION,
             totalUsd: totalSelected,
             cash: ALL_BILLS

@@ -74,7 +74,7 @@ const LP = () => {
 
   return (
     <Grid textAlign="center" gap={2}>
-      Provide LP to device. buy LP tokens OnRamp to LUSD
+      Provide LP to device. buy LP tokens OnRamp to DAI
       {sessionInit ? (
         <div>
           session {} (awaiting deposit....)

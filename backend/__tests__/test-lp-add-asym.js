@@ -24,7 +24,7 @@ let run_test = async () => {
         //hit fake endpoint
         const bodyFund = {
             amount:"2",
-            asset:"LUSD"
+            asset:"DAI"
         };
         console.log("bodyFund: ",bodyFund)
         let respFund = await axios.post(
@@ -44,7 +44,7 @@ let run_test = async () => {
 
         //fullfill
         const bodyFullfill = {
-            amount:status.session.SESSION_FUNDING_LUSD,
+            amount:status.session.SESSION_FUNDING_DAI,
             sessionId:status.session.sessionId
         };
         console.log("bodyFullfill: ",bodyFullfill)

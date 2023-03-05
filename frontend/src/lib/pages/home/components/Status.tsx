@@ -11,7 +11,7 @@ const Onramp = () => {
   const [status, setStatus] = React.useState({
     rate: "...",
     balanceUSD: "...",
-    balanceLUSD: "...",
+    balanceDAI: "...",
     billacceptor: "...",
     hotwallet: "...",
   });
@@ -55,8 +55,8 @@ const Onramp = () => {
       <tr><th>Bill Acceptor</th><td>{status.billacceptor}</td></tr>
       <tr><th>Hot Wallet</th><td>{status.hotwallet}</td></tr>
       <tr><th>Total USD</th><td>{Number(status.balanceUSD).toFixed(2)}</td></tr>
-      <tr><th>Total LUSD</th><td>{Number(status.balanceLUSD).toFixed(2)}</td></tr>
-      <tr><th>Rate</th><td>{Number(status.rate).toFixed(2)} USD per LUSD</td></tr>
+      <tr><th>Total DAI</th><td>{Number(status.balanceDAI).toFixed(2)}</td></tr>
+      <tr><th>Rate</th><td>{Number(status.rate).toFixed(2)} USD per DAI</td></tr>
       <tr><th>Cash</th><td>
 	<table>
 		<tr><th>$1</th><th>$5</th><th>$10</th><th>$20</th><th>$50</th><th>$100</th></tr>
