@@ -40,11 +40,14 @@ const Onramp = () => {
 
   const handleScan = (data) => {
     if (data) {
-      console.log(data)
-      console.log(data.text)
-      const paymentParams = qr.readStringToJSON(data.text);
-      const scannedAddress = paymentParams.to;
-      setAddress(scannedAddress);
+      console.log("data: ",data)
+      console.log("data.text: ",data.text)
+      //@TODO detect if payment params or addy
+      // const paymentParams = qr.readStringToJSON(data.text);
+      // console.log("paymentParams: ",paymentParams)
+      // const scannedAddress = paymentParams.to;
+      // console.log("scannedAddress: ",scannedAddress)
+      setAddress(data.text);
     }
   };
 
