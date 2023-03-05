@@ -129,6 +129,9 @@ function getQuoteForSellProducingCashValue(usdOut: number): number {
 }
 
 function getQuoteForSellOfExactCryptoValue(daiIn: number): number {
+    console.log('| getQuoteForSellOfExactCryptoValue | daiIn: ', daiIn)
+    console.log('| getQuoteForSellOfExactCryptoValue | TOTAL_CASH: ', TOTAL_CASH)
+    console.log('| getQuoteForSellOfExactCryptoValue | TOTAL_DAI: ', TOTAL_DAI)
     const quoteRate = TOTAL_CASH / (TOTAL_DAI + daiIn)
 	return daiIn * quoteRate
 }
@@ -644,7 +647,7 @@ let credit_session = async function (input:any) {
             CURRENT_SESSION.SESSION_FUNDING_USD = (CURRENT_SESSION.SESSION_FUNDING_USD ?? 0) + parseInt(input.amount)
         }
         if(input.asset === 'DAI'){
-            CURRENT_SESSION.SESSION_FUNDING_DAI = (CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0) + input.amount
+            CURRENT_SESSION.SESSION_FUNDING_DAI = (CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0) + Number(input.amount)
         }
         publisher.publish('payments',JSON.stringify(input))
         return true
