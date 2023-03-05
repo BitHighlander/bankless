@@ -86,11 +86,12 @@ let eSSP:any
 let ACCEPTOR_ONLINE = false
 let ALL_BILLS = {
     "1": 0,
+    "2": 0,
     "5": 0,
     "10":  0,
     "20":  0,
     "50":  0,
-    "100":  1
+    "100":  1,
 }
 let TOTAL_CASH = 0
 let TOTAL_LUSD = 0
@@ -115,6 +116,18 @@ let TXS_FULLFILLED = []
  */
 
 let ACCOUNTS_LP_OWNERS = []
+
+const FEE = 0.003;
+
+function getQuoteForBuy(usdIn: number): number {
+        const usdCredit = usdIn * (1 - FEE)
+	return TOTAL_LUSD * usdCredit / (TOTAL_CASH + usdCredit)
+}
+
+function getQuoteForSell(lusdIn: number): number {
+	const lusdCredit = lusdIn * (1 - FEE)
+	return TOTAL_CASH * lusdCredit / (TOTAL_LUSD + lusdCredit)
+}
 
 let onStartAcceptor = async function(){
     try{
@@ -255,6 +268,9 @@ let onStartAcceptor = async function(){
             console.log('level: ', level)
             if(level.value == 100){
                 ALL_BILLS["1"] = level.denomination_level
+            }
+            if(level.value == 200){
+                ALL_BILLS["2"] = level.denomination_level
             }
             if(level.value == 500){
                 ALL_BILLS["5"] = level.denomination_level
@@ -547,7 +563,6 @@ let onStartSession = async function(){
     }
 }
 onStartSession()
-
 let fullfill_order = async function (sessionId:string) {
     let tag = TAG + " | fullfill_order | "
     try {
@@ -555,9 +570,7 @@ let fullfill_order = async function (sessionId:string) {
         if(!CURRENT_SESSION) throw Error("No session to fullfill!")
         if(CURRENT_SESSION.type === 'buy'){
             if(CURRENT_SESSION.SESSION_FUNDING_USD === 0) throw Error("No session to fullfill!")
-            let rate = TOTAL_CASH / TOTAL_LUSD
-            log.info(tag,"rate: ",rate)
-            let amountOut = CURRENT_SESSION.SESSION_FUNDING_USD / rate
+            let amountOut = getQuoteForBuy(CURRENT_SESSION.SESSION_FUNDING_USD ?? 0)
             log.info(tag,"amountOut: ",amountOut)
             //round to int
             let addressFullFill = CURRENT_SESSION.address
@@ -567,9 +580,7 @@ let fullfill_order = async function (sessionId:string) {
             return txid
         }
         if(CURRENT_SESSION.type === 'sell'){
-            let rate = TOTAL_CASH / TOTAL_LUSD
-            log.info(tag,"rate: ",rate)
-            let amountOut = (CURRENT_SESSION.SESSION_FUNDING_LUSD ?? 0) * rate
+            let amountOut = getQuoteForSell(CURRENT_SESSION.SESSION_FUNDING_LUSD ?? 0)
             log.info(tag,"amountOut: ",amountOut)
             amountOut = parseInt(amountOut.toString())
             log.info(tag,"amountOut (rounded): ",amountOut)
@@ -581,7 +592,7 @@ let fullfill_order = async function (sessionId:string) {
         }
         if(CURRENT_SESSION.type === 'lpAdd'){
             //caluate LP tokens
-            // let lpTokens = await calculate_lp_tokens(CURRENT_SESSION.SESSION_FUNDING_LUSD,CURRENT_SESSION.CURRENT_SESSION.SESSION_FUNDING_USD)
+            // let lpTokens = await calculate_lp_tokens(CURRENT_SESSION.SESSION_FUNDING_LUSD ?? 0,CURRENT_SESSION.CURRENT_SESSION.SESSION_FUNDING_USD ?? 0)
 
             //credit owner
             let txid = "bla"
@@ -876,7 +887,7 @@ let set_session_sell = async function (input) {
         if(!amount) throw Error("no amount!")
 
         //amountIn
-        let amountIn = amount / (TOTAL_CASH / TOTAL_LUSD)
+        let amountIn = getQuoteForSell(amount)
         //address
         let address = await signer.getAddress(WALLET_MAIN)
         

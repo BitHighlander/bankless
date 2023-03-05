@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 
 const Onramp = () => {
   const [availableOnes, setAvailableOnes] = useState(0);
+  const [availableTwos, setAvailableTwos] = useState(0);
   const [availableFives, setAvailableFives] = useState(0);
   const [availableTens, setAvailableTens] = useState(0);
   const [availableTwenties, setAvailableTwenties] = useState(0);
@@ -26,6 +27,7 @@ const Onramp = () => {
       );
       setStatus(status.data);
       setAvailableOnes(status.data.cash['1'])
+      setAvailableTwos(status.data.cash['2'])
       setAvailableFives(status.data.cash['5'])
       setAvailableTens(status.data.cash['10'])
       setAvailableTwenties(status.data.cash['20'])
@@ -52,14 +54,19 @@ const Onramp = () => {
   }, []);
 
   return (
-    <Grid textAlign="center" gap={2}>
-      <small>status acceptor: {status.billacceptor}</small>
-      <small>status hotwallet: {status.hotwallet}</small>
-      <small>rate: {status.hotwallet}</small>
-      <small>Amount USD in device: {status.balanceUSD}</small>
-      <small>Amount LUSD in Wallet: {status.balanceLUSD}</small>
-      <small>cash: 1: {availableOnes} 5: {availableFives} 10: {availableTens} 20: {availableTwenties} 50: {availableFifties} 100: {availableHundreds}</small>
-    </Grid>
+    <table style={{textAlign: "left", verticalAlign: "top"}}>
+      <tr><th>Bill Acceptor</th><td>{status.billacceptor}</td></tr>
+      <tr><th>Hot Wallet</th><td>{status.hotwallet}</td></tr>
+      <tr><th>Total USD</th><td>{status.balanceUSD}</td></tr>
+      <tr><th>Total LUSD</th><td>{status.balanceLUSD}</td></tr>
+      <tr><th>Rate</th><td>{status.rate} USD per LUSD</td></tr>
+      <tr><th>Cash</th><td>
+	<table>
+		<tr><th>$1</th><th>$2</th><th>$5</th><th>$10</th><th>$20</th><th>$50</th><th>$100</th></tr>
+		<tr><td>{availableOnes}</td><td>{availableTwos}</td><td>{availableFives}</td><td>{availableTens}</td><td>{availableTwenties}</td><td>{availableFifties}</td><td>{availableHundreds}</td></tr>
+	</table>
+      </td></tr>
+    </table>
   );
 };
 
