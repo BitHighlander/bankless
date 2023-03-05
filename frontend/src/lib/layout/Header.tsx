@@ -30,10 +30,10 @@ const Header = () => {
       gridGap={2}
     >
       <Box marginLeft="auto">
-        <div>
-          {/* {features && <div>features: {features}</div>} */}
-          {keepkeyError && <div>error: {keepkeyError}</div>}
-        </div>
+        {/*<div>*/}
+        {/*  /!* {features && <div>features: {features}</div>} *!/*/}
+        {/*  {keepkeyError && <div>error: {keepkeyError}</div>}*/}
+        {/*</div>*/}
         <ThemeToggle />
       </Box>
     </Flex>

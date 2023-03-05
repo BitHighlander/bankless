@@ -285,7 +285,30 @@ export class IndexController extends Controller {
             throw new ApiError("error",503,"error: "+e.toString());
         }
     }
-    
+
+    /*
+    * buy lusd
+    *
+    *
+    * */
+    @Post('/create')
+    public async create(@Body() body: any): Promise<any> {
+        let tag = TAG + " | create | "
+        try{
+            let input  = {}
+            let session = await Bankless.startSession(input)
+            return session
+        } catch(e){
+            let errorResp:Error = {
+                success:false,
+                tag,
+                e
+            }
+            log.error(tag,"e: ",{errorResp})
+            throw new ApiError("error",503,"error: "+e.toString());
+        }
+    }
+
     /*
     * buy lusd
     *
@@ -299,7 +322,7 @@ export class IndexController extends Controller {
             let input  = {
                 address:body.address
             }
-            let session = await Bankless.startSessionBuy(input)
+            let session = await Bankless.setSessionBuy(input)
             return session
         } catch(e){
             let errorResp:Error = {
@@ -325,7 +348,7 @@ export class IndexController extends Controller {
             let input  = {
                 amount:body.amount
             }
-            let session = await Bankless.startSessionSell(input)
+            let session = await Bankless.setSessionSell(input)
             return session
         } catch(e){
             let errorResp:Error = {
@@ -351,7 +374,7 @@ export class IndexController extends Controller {
             let input  = {
                 address:body.address
             }
-            let session = await Bankless.startSessionLpAdd(input.address)
+            let session = await Bankless.setSessionLpAdd(input.address)
             return session
         } catch(e){
             let errorResp:Error = {
@@ -377,7 +400,7 @@ export class IndexController extends Controller {
             let input  = {
                 address:body.address
             }
-            let session = await Bankless.startSessionLpAddAsym(input.address)
+            let session = await Bankless.setSessionLpAddAsym(input.address)
             return session
         } catch(e){
             let errorResp:Error = {
@@ -403,7 +426,7 @@ export class IndexController extends Controller {
             let input  = {
                 address:body.address
             }
-            let session = await Bankless.startSessionLpWithdraw(input.address)
+            let session = await Bankless.setSessionLpWithdraw(input.address)
             return session
         } catch(e){
             let errorResp:Error = {
@@ -429,7 +452,7 @@ export class IndexController extends Controller {
             let input  = {
                 address:body.address
             }
-            let session = await Bankless.startSessionLpWithdrawAsym(input.address)
+            let session = await Bankless.setSessionLpWithdrawAsym(input.address)
             return session
         } catch(e){
             let errorResp:Error = {

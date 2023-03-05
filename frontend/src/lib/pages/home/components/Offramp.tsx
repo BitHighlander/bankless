@@ -116,6 +116,7 @@ const Buy = () => {
         }
         let totalSelected = 0;
         Object.keys(allBills).forEach(key => {
+            // @ts-ignore
             totalSelected = totalSelected + (key * allBills[key]);
         });
         setTotalSelected(totalSelected);
@@ -226,10 +227,14 @@ const Buy = () => {
     onStart();
   }, []);
 
+
     const onClickOnes = async function () {
         try {
             let selectedOnesNew = selectedOnes + 1;
+            let availableOnesNew = availableOnes - 1;
+            if(availableOnesNew == 0) setisDisabledOnes(true)
             setselectedOnes(selectedOnesNew)
+            setAvailableOnes(availableOnesNew)
             tallySelected()
         } catch (e) {
             // eslint-disable-next-line no-console
@@ -240,7 +245,10 @@ const Buy = () => {
     const onClickFives = async function () {
         try {
             let selectedFivesNew = selectedFives + 1;
+            let availableFivesNew = availableFives - 1;
+            if(availableFivesNew == 0) setisDisabledFives(true)
             setselectedFives(selectedFivesNew)
+            setAvailableFives(availableFivesNew)
             tallySelected()
         } catch (e) {
             // eslint-disable-next-line no-console
@@ -251,7 +259,10 @@ const Buy = () => {
     const onClickTens = async function () {
         try {
             let selectedTensNew = selectedTens + 1;
+            let availableTensNew = availableTens - 1;
+            if(availableTensNew == 0) setisDisabledTens(true)
             setselectedTens(selectedTensNew)
+            setAvailableTens(availableTensNew)
             tallySelected()
         } catch (e) {
             // eslint-disable-next-line no-console
@@ -262,7 +273,10 @@ const Buy = () => {
     const onClickTwenties = async function () {
         try {
             let selectedTwentiesNew = selectedTwenties + 1;
+            let availableTwentiesNew = availableTwenties - 1;
+            if(availableTwentiesNew == 0) setisDisabledTwenties(true)
             setselectedTwenties(selectedTwentiesNew)
+            setAvailableTwenties(availableTwentiesNew)
             tallySelected()
         } catch (e) {
             // eslint-disable-next-line no-console
@@ -273,7 +287,10 @@ const Buy = () => {
     const onClickFifties = async function () {
         try {
             let selectedFiftiesNew = selectedFifties + 1;
+            let availableFiftiesNew = availableFifties - 1;
+            if(availableFifties == 0) setisDisabledFifties(true)
             setselectedFifties(selectedFiftiesNew)
+            setAvailableFifties(availableFiftiesNew)
             tallySelected()
         } catch (e) {
             // eslint-disable-next-line no-console
@@ -284,7 +301,10 @@ const Buy = () => {
     const onClickHundreds = async function () {
         try {
             let selectedHundredsNew = selectedHundreds + 1;
+            let availableHundredsNew = availableHundreds - 1;
+            if(availableHundredsNew == 0) setisDisabledHundreds(true)
             setselectedHundreds(selectedHundredsNew)
+            setAvailableHundreds(availableHundredsNew)
             tallySelected()
         } catch (e) {
             // eslint-disable-next-line no-console
@@ -299,12 +319,12 @@ const Buy = () => {
                 sessionId
             };
             console.log("address: ",address)
-/*            let submitResp = await axios.post(
+            let submitResp = await axios.post(
                 "http://127.0.0.1:4000/api/v1/fullfill",
                 body
             );
 
-            submitResp = submitResp.data*/
+            submitResp = submitResp.data
         } catch (e) {
             // eslint-disable-next-line no-console
             console.error(e);
@@ -317,22 +337,11 @@ const Buy = () => {
               <br/>
               address: {address}
               <br/>
-              Bills to be bought: {amountOut}
+              Bills to be dispensed: {amountOut}
               <br/>
               LUSD to deposit: {amountIn}
               <br/>
-              sessionId: {sessionId}
-              <br/>
               {/*{qrcode}*/}
-              <Button
-                  mt={4}
-                  colorScheme='teal'
-                  //isLoading={props.isSubmitting}
-                  type='submit'
-                  onClick={onSubmitWithdrawal}
-              >
-                  Dump Bills
-              </Button>
               <div
                   style={{
                       display: "flex",
@@ -349,29 +358,82 @@ const Buy = () => {
                       <QRCode value={qrString} size={300} />
                   </div>
               </div>
+              <br/>
+              <Button onClick={onSubmitWithdrawal}>Payout Cash</Button>
           </div>) : (
               <div style={{ paddingTop: '100px' }} className="button-container">
-              <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
-                  <button onClick={onClickOnes} className="button">$1</button> <span className="small-text">available: {availableOnes} selected {selectedOnes}</span>
-              </Box>
-              <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
-                  <button onClick={onClickFives} className="button">$5</button> <span className="small-text">available: {availableFives} selected {selectedFives}</span>
-              </Box>
-              <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
-                  <button onClick={onClickTens} className="button">$10</button> <span className="small-text">available: {availableTens} selected {selectedTens}</span>
-              </Box>
-              <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
-                  <button onClick={onClickTwenties} className="button">$20</button> <span className="small-text">available: {availableTwenties} selected {selectedTwenties}</span>
-              </Box>
-              <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
-                  <button onClick={onClickFifties} className="button">$50</button> <span className="small-text">available: {availableFifties} selected {selectedFifties}</span>
-              </Box>
-              <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
-                  <button onClick={onClickHundreds} className="button">$100</button> <span className="small-text">available: {availableHundreds} selected {selectedHundreds}</span>
-              </Box>
-              <div className="total-container">
-                  <p>Total amount selected: ${totalSelected}</p>
-              </div>
+                  <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
+                      <button
+                          onClick={onClickOnes}
+                          className="button"
+                          disabled={isDisabledOnes}
+                      >
+                          $1
+                      </button>
+                      <span className="small-text">
+                    available: {availableOnes} selected {selectedOnes}
+                  </span>
+                  </Box>
+                  <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
+                      <button
+                          onClick={onClickFives}
+                          className="button"
+                          disabled={isDisabledFives}
+                      >
+                          $5
+                      </button>
+                      <span className="small-text">
+                    available: {availableFives} selected {selectedFives}
+                  </span>
+                  </Box>
+                  <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
+                      <button
+                          onClick={onClickTens}
+                          className="button"
+                          disabled={isDisabledTens}
+                      >
+                          $10
+                      </button>
+                      <span className="small-text">
+                    available: {availableTens} selected {selectedTens}
+                  </span>
+                  </Box>
+                  <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
+                      <button
+                          onClick={onClickTwenties}
+                          className="button"
+                          disabled={isDisabledTwenties}
+                      >
+                          $20
+                      </button>
+                      <span className="small-text">
+                    available: {availableTwenties} selected {selectedTwenties}
+                  </span>
+                  </Box>
+                  <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
+                      <button
+                          onClick={onClickFifties}
+                          className="button"
+                          disabled={isDisabledFifties}
+                      >
+                          $50
+                      </button>
+                      <span className="small-text">
+                    available: {availableFifties} selected {selectedFifties}
+                  </span>
+                  </Box>
+                  <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
+                      <button
+                          onClick={onClickHundreds}
+                          className="button"
+                          disabled={isDisabledHundreds}
+                      >
+                          $100
+                      </button>
+                      <span className="small-text">
+                    available: {availableHundreds} selected {selectedHundreds}
+                  </span>
+                  </Box>
               <Button
                   mt={4}
                   colorScheme='teal'

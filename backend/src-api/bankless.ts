@@ -96,6 +96,7 @@ let TOTAL_CASH = 0
 let TOTAL_LUSD = 0
 //current session
 let CURRENT_SESSION: {
+    start?: any,
     sessionId?: string,
     type?: string,
     address?: string,
@@ -407,23 +408,26 @@ module.exports = {
     poolInfo: async function () {
         return get_pool_info();
     },
-    startSessionBuy: async function (input:any) {
-        return start_session_buy(input);
+    startSession: async function (input:any) {
+        return start_session(input);
     },
-    startSessionSell: async function (input:any) {
-        return start_session_sell(input);
+    setSessionBuy: async function (input:any) {
+        return set_session_buy(input);
     },
-    startSessionLpAdd: async function (input:any) {
-        return start_session_lp_add(input);
+    setSessionSell: async function (input:any) {
+        return set_session_sell(input);
     },
-    startSessionLpWithdraw: async function (input:any) {
-        return start_session_lp_withdraw(input);
+    setSessionLpAdd: async function (input:any) {
+        return set_session_lp_add(input);
     },
-    startSessionLpAddAsy: async function (input:any) {
-        return start_session_lp_add_asym(input);
+    setSessionLpWithdraw: async function (input:any) {
+        return set_session_lp_withdraw(input);
     },
-    startSessionLpWithdrawAsym: async function (input:any) {
-        return start_session_lp_withdraw_asym(input);
+    setSessionLpAddAsy: async function (input:any) {
+        return set_session_lp_add_asym(input);
+    },
+    setSessionLpWithdrawAsym: async function (input:any) {
+        return set_session_lp_withdraw_asym(input);
     },
     //credit session
     credit: async function (input:any) {
@@ -439,7 +443,7 @@ module.exports = {
     balance: async function () {
         return get_balance();
     },
-    sendToAddress: async function (address:string,amount:string) {
+    sendToAddress: async function (address:string,amount:number) {
         return send_to_address(address,amount);
     },
     //bill acceptor
@@ -555,12 +559,10 @@ let fullfill_order = async function (sessionId:string) {
             log.info(tag,"rate: ",rate)
             let amountOut = CURRENT_SESSION.SESSION_FUNDING_USD / rate
             log.info(tag,"amountOut: ",amountOut)
-            amountOut = parseInt(amountOut.toString())
-            log.info(tag,"amountOut (rounded): ",amountOut)
             //round to int
             let addressFullFill = CURRENT_SESSION.address
             clear_session()
-            let txid = await send_to_address(addressFullFill,amountOut.toString())
+            let txid = await send_to_address(addressFullFill,amountOut)
             CURRENT_SESSION.txid = txid
             return txid
         }
@@ -651,7 +653,7 @@ let payout_cash = async function (amount:string) {
     }
 }
 
-let send_to_address = async function (address:string,amount:string) {
+let send_to_address = async function (address:string,amount:number) {
     let tag = TAG + " | send_to_address | "
     try {
         log.info(tag,"address:",address)
@@ -740,8 +742,10 @@ let send_to_address = async function (address:string,amount:string) {
                 })
                 .once('receipt', function(receipt){ console.log("receipt", receipt) })
                 .on('confirmation', function(confNumber, receipt){
-                    CURRENT_SESSION.status = 'fullfilled'
-                    console.log("confNumber",confNumber,"receipt",receipt) })
+                    if(confNumber === 1){
+                        CURRENT_SESSION.status = 'fullfilled'
+                        console.log("confNumber",confNumber,"receipt",receipt) }
+                })
                 .on('error', function(error){ console.log("error", error) })
                 .then(function(receipt){
                     console.log("trasaction mined!", receipt);
@@ -830,10 +834,25 @@ let get_pool_info = async function () {
     }
 }
 
-let start_session_buy = async function (input:any) {
+let start_session = async function (input:any) {
     let tag = TAG + " | start_session_buy | "
     try {
         if(CURRENT_SESSION && CURRENT_SESSION.sessionId) throw Error("already in session!")
+        //if buy intake address
+        let sessionId = uuid.generate()
+        let sessionStart = new Date().getTime()
+        CURRENT_SESSION = {sessionId, start: sessionStart }
+        //@TODO save to mongo
+        return CURRENT_SESSION
+    } catch (e) {
+        console.error(tag, "e: ", e)
+        throw e
+    }
+}
+
+let set_session_buy = async function (input:any) {
+    let tag = TAG + " | set_session_buy | "
+    try {
         if(!input.address) throw Error("no address!")
         //if buy intake address
         let sessionId = uuid.generate()
@@ -847,8 +866,8 @@ let start_session_buy = async function (input:any) {
     }
 }
 
-let start_session_sell = async function (input) {
-    let tag = TAG + " | start_session_sell | "
+let set_session_sell = async function (input) {
+    let tag = TAG + " | set_session_sell | "
     try {
         log.info(tag,"input: ",input)
         //if buy intake address
@@ -876,8 +895,8 @@ let start_session_sell = async function (input) {
     }
 }
 
-let start_session_lp_add = async function (input) {
-    let tag = TAG + " | start_session_lp | "
+let set_session_lp_add = async function (input) {
+    let tag = TAG + " | set_session_lp | "
     try {
         //if buy intake address
         let sessionId = uuid.generate()
@@ -890,8 +909,8 @@ let start_session_lp_add = async function (input) {
     }
 }
 
-let start_session_lp_add_asym = async function (input) {
-    let tag = TAG + " | start_session_lp | "
+let set_session_lp_add_asym = async function (input) {
+    let tag = TAG + " | set_session_lp | "
     try {
         //if buy intake address
         let sessionId = uuid.generate()
@@ -904,8 +923,8 @@ let start_session_lp_add_asym = async function (input) {
     }
 }
 
-let start_session_lp_withdraw = async function (input) {
-    let tag = TAG + " | start_session_lp_withdraw | "
+let set_session_lp_withdraw = async function (input) {
+    let tag = TAG + " | set_session_lp_withdraw | "
     try {
         //if buy intake address
         let sessionId = uuid.generate()
@@ -918,8 +937,8 @@ let start_session_lp_withdraw = async function (input) {
     }
 }
 
-let start_session_lp_withdraw_asym = async function (input) {
-    let tag = TAG + " | start_session_lp_withdraw_asym | "
+let set_session_lp_withdraw_asym = async function (input) {
+    let tag = TAG + " | set_session_lp_withdraw_asym | "
     try {
         //if buy intake address
         let sessionId = uuid.generate()

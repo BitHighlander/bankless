@@ -24,8 +24,11 @@ const Onramp = () => {
   const [isConnected, setIsConnected] = useState(socket.connected);
   const [lastPong, setLastPong] = useState(null);
   const [sessionId, setSessionId] = React.useState(false);
+  const [sessionTypeSelected, setSessionTypeSelected] = React.useState(false);
   const [sending, setSending] = React.useState(false);
   const [sent, setSent] = React.useState(false);
+  const [fullfilled, setFullfilled] = React.useState(false);
+  const [readyForPayout, setReadyForPayout] = React.useState(false);
   const [txid, setTxid] = React.useState("");
   const [usd, setUsd] = React.useState(0);
   // const [sessionInit, setSessionInit] = React.useState(false);
@@ -71,6 +74,18 @@ const Onramp = () => {
     socket.emit("ping");
   };
 
+  const onClear = async function () {
+    try {
+
+      // @ts-ignore
+      window.location.reload(true);
+
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(e);
+    }
+  };
+
   const onSubmit = async function () {
     try {
 
@@ -86,8 +101,11 @@ const Onramp = () => {
       submitResp = submitResp.data
       // eslint-disable-next-line no-console
       console.log("submitResp: ", submitResp);
+      if(submitResp.type === 'buy'){
+        setSessionId(true);
+        setSessionTypeSelected(true)
+      }
 
-      setSessionId(true);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error(e);
@@ -108,11 +126,13 @@ const Onramp = () => {
         // @ts-ignore
         setUsd(status.session.SESSION_FUNDING_USD)
         console.log("onCheckDollars: ");
+        setReadyForPayout(true)
       }
       if(status && status.session && status.session.txid){
         // @ts-ignore
         setTxid(status.session.txid)
         setSent(true)
+        setSessionTypeSelected(true)
       }
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -155,9 +175,10 @@ const Onramp = () => {
       status = status.data
       console.log("status: ",status)
       // @ts-ignore
-      if(status.session){
+      if(status.session && status.session.type === 'buy'){
         // @ts-ignore
         setSessionId(status.session.sessionId)
+        setSessionTypeSelected(true)
       }
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -175,35 +196,26 @@ const Onramp = () => {
   return (
     <Grid textAlign="center" gap={2}>
       OnRamp to LUSD
-      {sessionId ? (
+      {sessionTypeSelected ? (
         <div>
           {sending ? (<div>
-                {sent ? (<div>sent: txid: {txid}</div>) : (<div>
+                {sent ? (<div>
+                  sent: txid: {txid} <br/>
+                  </div>) : (<div>
                   <Spinner />
                 </div>)}
           </div>) : (<div>
-            sessionId {sessionId} (awaiting deposit....)
-            <div>
+            {readyForPayout ? (<div><div>
               <p>USD: {usd || "0"}</p>
-            </div>
-            <Button
-                mt={4}
-                colorScheme="teal"
-                // isLoading={props.isSubmitting}
-                type="submit"
-                onClick={onCheckDollars}
-            >
-              update
-            </Button>
-            <Button
+            </div> <Button
                 mt={4}
                 colorScheme="teal"
                 // isLoading={props.isSubmitting}
                 type="submit"
                 onClick={onDone}
             >
-              Done
-            </Button>
+              Payout Crypto
+            </Button></div>):(<div>(deposit cash....)</div>)}
           </div>)}
         </div>
       ) : (
@@ -233,7 +245,7 @@ const Onramp = () => {
                 delay={300}
                 onError={handleError}
                 onResult={handleScan}
-                style={{ width: "100%" }}></QrReader>
+                style={{ width: "10%", height:"10%" }}></QrReader>
           </FormControl>
         </div>
       )}
