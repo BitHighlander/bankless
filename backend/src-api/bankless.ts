@@ -175,6 +175,13 @@ let onStartAcceptor = async function(){
             console.log('Port closed!')
         })
 
+        eSSP.on('POLL', (x) => {
+            if (x === "TIMEOUT") {
+                console.log("bill acceptor stopped responding, exiting with error")
+                process.exit(1)
+            }
+        })
+
         eSSP.on('READ_NOTE', async result => {
             if (result.channel === 0) return
             const channel = channels[result.channel - 1]

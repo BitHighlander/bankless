@@ -315,8 +315,8 @@ const Buy = () => {
           {readyForDeposit ? (<div>
             <table style={{textAlign: "left"}}>
                 <tr><th>Address</th><td>{address}</td></tr>
-                <tr><th>Bills to be purchased</th><td>{amountOut}</td></tr>
-                <tr><th>LUSD to deposit</th><td>{amountIn}</td></tr>
+                <tr><th>Cash to be purchased</th><td>${Number(amountOut).toFixed(2)}</td></tr>
+                <tr><th>LUSD to deposit</th><td>{(Math.ceil(Number(amountIn) * 100) / 100).toFixed(2)}</td></tr>
             </table>
               <div
                   style={{
