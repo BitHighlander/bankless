@@ -1,15 +1,8 @@
-import {
-  Grid,
-  Box,
-    Button
-} from "@chakra-ui/react";
+import { Button } from "@chakra-ui/react";
 import "../../../styles/ButtonContainer.css";
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import io from "socket.io-client";
-import EthereumQRPlugin from "@dri/ethereum-qr-code";
-// later in code
-const qr = new EthereumQRPlugin();
 import QRCode from 'qrcode.react';
 
 
@@ -31,12 +24,12 @@ const Buy = () => {
   const [selectedFifties, setselectedFifties] = useState(0);
   const [selectedHundreds, setselectedHundreds] = useState(0);
   const [totalSelected, setTotalSelected] = useState(0);
-    const [isDisabledOnes, setisDisabledOnes] = useState(false);
-    const [isDisabledFives, setisDisabledFives] = useState(false);
-    const [isDisabledTens, setisDisabledTens] = useState(false);
-    const [isDisabledTwenties, setisDisabledTwenties] = useState(false);
-    const [isDisabledFifties, setisDisabledFifties] = useState(false);
-    const [isDisabledHundreds, setisDisabledHundreds] = useState(false);
+  const [isDisabledOnes, setisDisabledOnes] = useState(false);
+  const [isDisabledFives, setisDisabledFives] = useState(false);
+  const [isDisabledTens, setisDisabledTens] = useState(false);
+  const [isDisabledTwenties, setisDisabledTwenties] = useState(false);
+  const [isDisabledFifties, setisDisabledFifties] = useState(false);
+  const [isDisabledHundreds, setisDisabledHundreds] = useState(false);
   const [readyForDeposit, setReadyForDeposit] = useState(false);
   const [address, setAddress] = useState("");
   const [amount, setAmount] = useState("");
@@ -144,11 +137,10 @@ const Buy = () => {
                     amount: totalSelected.toString(),
                 };
                 console.log("body: ", body);
-                let submitResp = await axios.post(
+                let submitResp = (await axios.post(
                     "http://127.0.0.1:4000/api/v1/create/sell",
                     body
-                );
-                submitResp = submitResp.data
+                )).data;
                 setSessionId(submitResp.sessionId)
                 setReadyForDeposit(true)
                 setAddress(submitResp.address)
@@ -334,14 +326,11 @@ const Buy = () => {
   return (
       <div>
           {readyForDeposit ? (<div>
-              <br/>
-              address: {address}
-              <br/>
-              Bills to be dispensed: {amountOut}
-              <br/>
-              LUSD to deposit: {amountIn}
-              <br/>
-              {/*{qrcode}*/}
+            <table>
+                <tr><th>Address</th><td>{address}</td></tr>
+                <tr><th>Bills to be purchased</th><td>{amountOut}</td></tr>
+                <tr><th>LUSD to deposit</th><td>{amountIn}</td></tr>
+            </table>
               <div
                   style={{
                       display: "flex",
@@ -358,82 +347,86 @@ const Buy = () => {
                       <QRCode value={qrString} size={300} />
                   </div>
               </div>
-              <br/>
               <Button onClick={onSubmitWithdrawal}>Payout Cash</Button>
           </div>) : (
-              <div style={{ paddingTop: '100px' }} className="button-container">
-                  <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
-                      <button
+            <div>
+            <table>
+                <tr>
+                    <th></th>
+                    <td>
+                        <button
                           onClick={onClickOnes}
                           className="button"
                           disabled={isDisabledOnes}
                       >
                           $1
                       </button>
-                      <span className="small-text">
-                    available: {availableOnes} selected {selectedOnes}
-                  </span>
-                  </Box>
-                  <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
-                      <button
+                    </td>
+                    <td>
+                        <button
                           onClick={onClickFives}
                           className="button"
                           disabled={isDisabledFives}
                       >
                           $5
                       </button>
-                      <span className="small-text">
-                    available: {availableFives} selected {selectedFives}
-                  </span>
-                  </Box>
-                  <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
-                      <button
+                    </td>
+                    <td>
+                        <button
                           onClick={onClickTens}
                           className="button"
                           disabled={isDisabledTens}
                       >
                           $10
                       </button>
-                      <span className="small-text">
-                    available: {availableTens} selected {selectedTens}
-                  </span>
-                  </Box>
-                  <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
-                      <button
+                    </td>
+                    <td>
+                        <button
                           onClick={onClickTwenties}
                           className="button"
                           disabled={isDisabledTwenties}
                       >
                           $20
                       </button>
-                      <span className="small-text">
-                    available: {availableTwenties} selected {selectedTwenties}
-                  </span>
-                  </Box>
-                  <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
-                      <button
+                    </td>
+                    <td>
+                        <button
                           onClick={onClickFifties}
                           className="button"
                           disabled={isDisabledFifties}
                       >
                           $50
                       </button>
-                      <span className="small-text">
-                    available: {availableFifties} selected {selectedFifties}
-                  </span>
-                  </Box>
-                  <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' m={2}>
-                      <button
+                    </td>
+                    <td>
+                        <button
                           onClick={onClickHundreds}
                           className="button"
                           disabled={isDisabledHundreds}
                       >
                           $100
                       </button>
-                      <span className="small-text">
-                    available: {availableHundreds} selected {selectedHundreds}
-                  </span>
-                  </Box>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Available</th>
+                    <td>{availableOnes}</td>
+                    <td>{availableFives}</td>
+                    <td>{availableTens}</td>
+                    <td>{availableTwenties}</td>
+                    <td>{availableFifties}</td>
+                    <td>{availableHundreds}</td>
+                </tr>
+                <tr>
+                    <th>Selected</th>
+                    <td>{selectedOnes}</td>
+                    <td>{selectedFives}</td>
+                    <td>{selectedTens}</td>
+                    <td>{selectedTwenties}</td>
+                    <td>{selectedFifties}</td>
+                    <td>{selectedHundreds}</td>
+                </tr>
+            </table>
               <Button
                   mt={4}
                   colorScheme='teal'

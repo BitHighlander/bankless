@@ -13,7 +13,6 @@ import io from "socket.io-client";
 import { Spinner } from '@chakra-ui/react'
 // @ts-ignore
 import EthereumQRPlugin from "@dri/ethereum-qr-code";
-import {set} from "husky";
 import { QrReader } from 'react-qr-reader';
 // later in code
 const qr = new EthereumQRPlugin();
@@ -242,7 +241,7 @@ const Onramp = () => {
               Continue
             </Button>
             <QrReader
-                delay={300}
+                delay={100}
                 onError={handleError}
                 onResult={handleScan}
                 style={{ width: "10%", height:"10%" }}></QrReader>
