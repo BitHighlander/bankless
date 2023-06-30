@@ -29,6 +29,15 @@ if(!WALLET_MAIN) throw Error("Missing WALLET_MAIN from ENV!")
 let NO_BROADCAST = process.env['WALLET_NO_BROADCAST']
 if(NO_BROADCAST) log.info(" NERFED! wallet will not send crypto!")
 
+let WALLET_FAKE_PAYMENTS = process.env['WALLET_FAKE_PAYMENTS']
+if(WALLET_FAKE_PAYMENTS) log.info(" WALLET_FAKE_PAYMENTS: will NOT pay crypto!")
+
+let WALLET_FAKE_BALANCES = process.env['WALLET_FAKE_BALANCES']
+if(WALLET_FAKE_BALANCES) log.info(" WALLET_FAKE_BALANCES: will FAKE BALANCES!")
+
+let ATM_NO_HARDWARE = process.env['ATM_NO_HARDWARE']
+if(ATM_NO_HARDWARE) log.info(" ATM_NO_HARDWARE: not attempting hardwware!")
+
 // order types
 enum OrderTypes {
     Buy,
@@ -92,10 +101,23 @@ let ALL_BILLS = {
     "10":  0,
     "20":  0,
     "50":  0,
-    "100":  1,
+    "100":  0,
 }
+if(WALLET_FAKE_BALANCES) {
+    ALL_BILLS["100"] = 12
+    ALL_BILLS["50"] = 10
+    ALL_BILLS["20"] = 11
+    ALL_BILLS["5"] = 10
+    ALL_BILLS["2"] = 10
+    ALL_BILLS["1"] = 10
+}
+
 let TOTAL_CASH = 0
 let TOTAL_DAI = 0
+if(WALLET_FAKE_BALANCES) {
+    TOTAL_DAI = 2000
+}
+
 //current session
 let CURRENT_SESSION: {
     start?: any,
@@ -135,6 +157,22 @@ function getQuoteForSellOfExactCryptoValue(daiIn: number): number {
     const quoteRate = TOTAL_CASH / (TOTAL_DAI + daiIn)
 	return daiIn * quoteRate
 }
+
+//get LP pool cap table
+
+//get quote for LP add liquidity
+function getQuoteForAddLiquidity(usdIn: number): number {
+    const liquidityRate = TOTAL_DAI / TOTAL_CASH
+    return usdIn * liquidityRate;
+}
+
+//get quote for LP remove liquidity
+function getQuoteForRemoveLiquidity(usdOut: number): number {
+    const liquidityRate = TOTAL_CASH / TOTAL_DAI;
+    return usdOut * liquidityRate;
+}
+
+
 
 let onStartAcceptor = async function(){
     try{
@@ -276,32 +314,33 @@ let onStartAcceptor = async function(){
         await eSSP.command('ENABLE_PAYOUT_DEVICE', {REQUIRE_FULL_STARTUP: false, GIVE_VALUE_ON_STORED: true})
 
         console.log('get levels')
-        const levels = (await eSSP.command('GET_ALL_LEVELS'))?.info?.counter;
-        console.log(levels)
-
-        for(let i = 0; i < levels.length; i++){
-            let level = levels[i]
-            console.log('level: ', level)
-            if(level.value == 100){
-                ALL_BILLS["1"] = level.denomination_level
-            }
-            if(level.value == 200){
-                ALL_BILLS["2"] = level.denomination_level
-            }
-            if(level.value == 500){
-                ALL_BILLS["5"] = level.denomination_level
-            }
-            if(level.value == 1000){
-                ALL_BILLS["10"] = level.denomination_level
-            }
-            if(level.value == 2000){
-                ALL_BILLS["20"] = level.denomination_level
-            }
-            if(level.value == 5000){
-                ALL_BILLS["50"] = level.denomination_level
-            }
-            if(level.value == 10000){
-                ALL_BILLS["100"] = level.denomination_level
+        if(!ATM_NO_HARDWARE){
+            const levels = (await eSSP.command('GET_ALL_LEVELS'))?.info?.counter;
+            console.log(levels)
+            for(let i = 0; i < levels.length; i++){
+                let level = levels[i]
+                console.log('level: ', level)
+                if(level.value == 100){
+                    ALL_BILLS["1"] = level.denomination_level
+                }
+                if(level.value == 200){
+                    ALL_BILLS["2"] = level.denomination_level
+                }
+                if(level.value == 500){
+                    ALL_BILLS["5"] = level.denomination_level
+                }
+                if(level.value == 1000){
+                    ALL_BILLS["10"] = level.denomination_level
+                }
+                if(level.value == 2000){
+                    ALL_BILLS["20"] = level.denomination_level
+                }
+                if(level.value == 5000){
+                    ALL_BILLS["50"] = level.denomination_level
+                }
+                if(level.value == 10000){
+                    ALL_BILLS["100"] = level.denomination_level
+                }
             }
         }
         ACCEPTOR_ONLINE = true
@@ -310,7 +349,10 @@ let onStartAcceptor = async function(){
         console.error(e)
     }
 }
-onStartAcceptor()
+if(!ATM_NO_HARDWARE){
+    onStartAcceptor()    
+}
+
 
 let countBills = async function(){
     try{
@@ -365,67 +407,73 @@ let sub_for_payments = async function(){
                     'content-type': 'application/json'
                 },
             };
-            let resp = await axios(body)
-            if(!resp.data) return
-            if(!resp.data.txids) return
-            let txids = resp.data.txids
-            for(let i = 0; i < txids.length; i++){
-                let txid = txids[i]
-                //log.info("txid: ",txid)
-                if(CURRENT_SESSION && !TXIDS_REVIEWED.some(e => e.txid === txid)){
-                    let url = "https://indexer.ethereum.shapeshift.com"+"/api/v2/tx/"+txid
-                    let body = {
-                        method: 'GET',
-                        url,
-                        headers: {
-                            'content-type': 'application/json'
-                        },
-                    };
-                    let respTx = await axios(body)
-                    let paymentAmountDai = 0
-                    for(let i = 0; i < respTx.data.tokenTransfers.length; i++){
-                        let transfer = respTx.data.tokenTransfers[i]
-                        if(transfer["symbol"] == "DAI" && transfer.contract === DAI_CONTRACT){
-                            paymentAmountDai = parseInt(transfer.value) / 1000000000000000000
-                            CURRENT_SESSION.SESSION_FUNDING_DAI = (CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0) + paymentAmountDai
+            try{
+                let resp = await axios(body)
+                if(!resp.data) return
+                if(!resp.data.txids) return
+                let txids = resp.data.txids
+                for(let i = 0; i < txids.length; i++){
+                    let txid = txids[i]
+                    //log.info("txid: ",txid)
+                    if(CURRENT_SESSION && !TXIDS_REVIEWED.some(e => e.txid === txid)){
+                        let url = "https://indexer.ethereum.shapeshift.com"+"/api/v2/tx/"+txid
+                        let body = {
+                            method: 'GET',
+                            url,
+                            headers: {
+                                'content-type': 'application/json'
+                            },
+                        };
+                        let respTx = await axios(body)
+                        let paymentAmountDai = 0
+                        for(let i = 0; i < respTx.data.tokenTransfers.length; i++){
+                            let transfer = respTx.data.tokenTransfers[i]
+                            if(transfer["symbol"] == "DAI" && transfer.contract === DAI_CONTRACT){
+                                paymentAmountDai = parseInt(transfer.value) / 1000000000000000000
+                                CURRENT_SESSION.SESSION_FUNDING_DAI = (CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0) + paymentAmountDai
+                            }
                         }
+                        log.info("paymentAmountDai: ",paymentAmountDai)
+                        log.info("SESSION_FUNDING_DAI: ",CURRENT_SESSION.SESSION_FUNDING_DAI)
+                        let payment = {
+                            txid:txids[i],
+                            asset:"DAI",
+                            session:CURRENT_SESSION.sessionId,
+                            amount:paymentAmountDai,
+                            funded:true,
+                            fullfilled:false
+                        }
+                        TXIDS_REVIEWED.push(payment)
+                        //Payment found!
+                        publisher.publish("payments",JSON.stringify(payment))
+                        fullfill_order(CURRENT_SESSION.sessionId)
+                    } else if(!TXIDS_REVIEWED.some(e => e.txid === txid) && !firstStart){
+                        log.info(tag,"payment outside session!")
+                        log.info(tag,"payment: !")
+                        let payment = {
+                            txid:txids[i],
+                            session:"none",
+                            status:"missed"
+                        }
+                        TXIDS_REVIEWED.push(payment)
+                    } else if(firstStart){
+                        let payment = {
+                            txid:txids[i],
+                            session:"none",
+                            status:"ignored"
+                        }
+                        TXIDS_REVIEWED.push(payment)
                     }
-                    log.info("paymentAmountDai: ",paymentAmountDai)
-                    log.info("SESSION_FUNDING_DAI: ",CURRENT_SESSION.SESSION_FUNDING_DAI)
-                    let payment = {
-                        txid:txids[i],
-                        asset:"DAI",
-                        session:CURRENT_SESSION.sessionId,
-                        amount:paymentAmountDai,
-                        funded:true,
-                        fullfilled:false
-                    }
-                    TXIDS_REVIEWED.push(payment)
-                    //Payment found!
-                    publisher.publish("payments",JSON.stringify(payment))
-                    fullfill_order(CURRENT_SESSION.sessionId)
-                } else if(!TXIDS_REVIEWED.some(e => e.txid === txid) && !firstStart){
-                    log.info(tag,"payment outside session!")
-                    log.info(tag,"payment: !")
-                    let payment = {
-                        txid:txids[i],
-                        session:"none",
-                        status:"missed"
-                    }
-                    TXIDS_REVIEWED.push(payment)
-                } else if(firstStart){
-                    let payment = {
-                        txid:txids[i],
-                        session:"none",
-                        status:"ignored"
-                    }
-                    TXIDS_REVIEWED.push(payment)
                 }
+
+
+                firstStart = false
+                await sleep(300000)
+            }catch(e){
+                console.log("unable to scan, trying again")
+                await sleep(300000)
             }
 
-
-            firstStart = false
-            await sleep(30000)
         }
     }catch(e){
         console.error(e)
@@ -560,7 +608,9 @@ let onStartSession = async function(){
         console.log("input: balanceBN: ",balanceBN)
         // @ts-ignore
         let tokenBalance = parseInt(balanceBN/Math.pow(10, decimals))
-        TOTAL_DAI = await tokenBalance
+        if(!WALLET_FAKE_BALANCES){
+            TOTAL_DAI = await tokenBalance
+        }
 
         //@TODO get fullfilled from DB
 
@@ -581,6 +631,44 @@ let onStartSession = async function(){
     }
 }
 onStartSession()
+
+//@TODO move me to module
+//debit bills
+function debitBills(amountOut) {
+    let bills = {};
+
+    // Debit bills based on the requested amount
+    // @ts-ignore
+    const denominations = Object.keys(ALL_BILLS).sort((a, b) => b - a);
+    let remainingAmount = amountOut;
+
+    for (const denomination of denominations) {
+        const availableBills = ALL_BILLS[denomination];
+        // @ts-ignore
+        const billCount = Math.min(Math.floor(remainingAmount / denomination), availableBills);
+
+        // Check if the bill count is greater than zero and available in the wallet
+        if (billCount > 0 && availableBills > 0) {
+            bills[denomination] = billCount;
+            // @ts-ignore
+            remainingAmount -= billCount * denomination;
+            ALL_BILLS[denomination] -= billCount;
+        }
+    }
+
+    // If the requested amount cannot be fully satisfied, throw an error
+    if (remainingAmount > 0) {
+        throw new Error('Insufficient funds to debit the requested amount.');
+    }
+
+    // If no bills were debited, throw an error
+    if (Object.keys(bills).length === 0) {
+        throw new Error('No bills available to debit.');
+    }
+
+    return bills;
+}
+
 let fullfill_order = async function (sessionId:string) {
     let tag = TAG + " | fullfill_order | "
     try {
@@ -592,10 +680,19 @@ let fullfill_order = async function (sessionId:string) {
             log.info(tag,"amountOut: ",amountOut)
             //round to int
             let addressFullFill = CURRENT_SESSION.address
-            clear_session()
-            let txid = await send_to_address(addressFullFill,amountOut)
-            await countBills()
+            let txid
+            if(!WALLET_FAKE_PAYMENTS){
+                txid = await send_to_address(addressFullFill,amountOut)
+            } else {
+                //debit total
+                TOTAL_DAI = TOTAL_DAI - amountOut
+                txid = "FAKE:TXID:PLACEHOLDER:AMOUNT:"+amountOut
+            }
+            if(!ATM_NO_HARDWARE){
+                await countBills()
+            }
             CURRENT_SESSION.txid = txid
+            clear_session()
             return txid
         }
         if(CURRENT_SESSION.type === 'sell'){
@@ -605,7 +702,61 @@ let fullfill_order = async function (sessionId:string) {
             log.info(tag,"amountOut (rounded): ",amountOut)
             clear_session()
             let txid = await payout_cash(amountOut.toString())
-            await countBills()
+            if(WALLET_FAKE_BALANCES){
+                log.info("dispensing fake bills!")
+                //algo large to small
+                let isDespensing = true
+
+                let dispense = function(amountOut:number){
+                    if(amountOut >= 100){
+                        log.info("Dispensing 100$")
+                        ALL_BILLS[100] = ALL_BILLS[100] - 1
+                        amountOut = amountOut - 100
+                    } else if(amountOut >= 50){
+                        log.info("Dispensing 50$")
+                        if(amountOut >= 50){
+                            ALL_BILLS[50] = ALL_BILLS[50] - 1
+                            amountOut = amountOut - 50
+                        }
+                    }else if(amountOut >= 20){
+                        log.info("Dispensing 20$")
+                        if(amountOut >= 20){
+                            ALL_BILLS[20] = ALL_BILLS[20] - 1
+                            amountOut = amountOut - 20
+                        }
+                    } else if (amountOut >= 10){
+                        log.info("Dispensing 10$")
+                        if(amountOut >= 10){
+                            ALL_BILLS[10] = ALL_BILLS[10] - 1
+                            amountOut = amountOut - 10
+                        }
+                    }else if (amountOut >= 5){
+                        log.info("Dispensing 5")
+                        if(amountOut >= 5){
+                            ALL_BILLS[5] = ALL_BILLS[5] - 1
+                            amountOut = amountOut - 5
+                        }
+                    }else if (amountOut >= 1){
+                        log.info("Dispensing 1")
+                        if(amountOut >= 1){
+                            ALL_BILLS[1] = ALL_BILLS[1] - 1
+                            amountOut = amountOut - 1
+                        }
+                    }
+                    return amountOut
+                }
+
+                while(isDespensing){
+                    amountOut = dispense(amountOut)
+                    if(amountOut <= 0){
+                        isDespensing = false
+                    }
+                }
+                log.info("Done dispensing")
+            }
+            if(!ATM_NO_HARDWARE){
+                await countBills()    
+            }
             CURRENT_SESSION.txid = txid
 
             return txid
@@ -645,10 +796,54 @@ let credit_session = async function (input:any) {
         log.info(tag,"input: ",input)
         if(input.asset === 'USD'){
             CURRENT_SESSION.SESSION_FUNDING_USD = (CURRENT_SESSION.SESSION_FUNDING_USD ?? 0) + parseInt(input.amount)
+            if(WALLET_FAKE_PAYMENTS){
+                let amountIn = input.amount
+                // credit bills
+                let isCrediting = true;
+                let deposit = function(amountIn: number) {
+                    if (amountIn >= 100) {
+                        log.info("Depositing 100$");
+                        ALL_BILLS[100] = ALL_BILLS[100] + 1;
+                        amountIn = amountIn - 100;
+                    } else if (amountIn >= 50) {
+                        log.info("Depositing 50$");
+                        ALL_BILLS[50] = ALL_BILLS[50] + 1;
+                        amountIn = amountIn - 50;
+                    } else if (amountIn >= 20) {
+                        log.info("Depositing 20$");
+                        ALL_BILLS[20] = ALL_BILLS[20] + 1;
+                        amountIn = amountIn - 20;
+                    } else if (amountIn >= 10) {
+                        log.info("Depositing 10$");
+                        ALL_BILLS[10] = ALL_BILLS[10] + 1;
+                        amountIn = amountIn - 10;
+                    } else if (amountIn >= 5) {
+                        log.info("Depositing 5$");
+                        ALL_BILLS[5] = ALL_BILLS[5] + 1;
+                        amountIn = amountIn - 5;
+                    } else if (amountIn >= 1) {
+                        log.info("Depositing 1$");
+                        ALL_BILLS[1] = ALL_BILLS[1] + 1;
+                        amountIn = amountIn - 1;
+                    }
+                    return amountIn;
+                };
+
+                while (isCrediting) {
+                    amountIn = deposit(amountIn);
+                    if (amountIn <= 0) {
+                        isCrediting = false;
+                    }
+                }
+            }
         }
         if(input.asset === 'DAI'){
             CURRENT_SESSION.SESSION_FUNDING_DAI = (CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0) + Number(input.amount)
+            if(WALLET_FAKE_PAYMENTS){
+                TOTAL_DAI = TOTAL_DAI + Number(input.amount)
+            }
         }
+
         publisher.publish('payments',JSON.stringify(input))
         return true
     } catch (e) {
@@ -671,14 +866,16 @@ let payout_cash = async function (amount:string) {
             log.info("paying out cash: ",typeof(amount))
 
             //verify
-            const dispensed = new Promise(resolve => eSSP.once("DISPENSED", (x) => resolve(x)))
-            let result = await eSSP.command('PAYOUT_AMOUNT', {
-                amount:parseInt(amount) * 100,
-                country_code: 'USD',
-                test: false,
-            })
-            log.info("result: ",result)
-            await dispensed
+            if(!ATM_NO_HARDWARE){
+                const dispensed = new Promise(resolve => eSSP.once("DISPENSED", (x) => resolve(x)))
+                let result = await eSSP.command('PAYOUT_AMOUNT', {
+                    amount:parseInt(amount) * 100,
+                    country_code: 'USD',
+                    test: false,
+                })
+                log.info("result: ",result)
+                await dispensed    
+            }
         }
         return "done"
     } catch (e) {
@@ -843,7 +1040,7 @@ let get_status = async function () {
         let output:any = {
             billacceptor: ACCEPTOR_ONLINE ? "online" : "offline",
             hotwallet:"online",
-            balanceUSD: TOTAL_CASH, //TODO get this from hardware
+            balanceUSD: totalSelected, //TODO get this from hardware
             balanceDAI: TOTAL_DAI, //TODO get this from hotwallet
             rate: TOTAL_CASH / TOTAL_DAI,
             session: CURRENT_SESSION,
@@ -909,8 +1106,12 @@ let set_session_sell = async function (input) {
         let amount = input.amount
         if(!amount) throw Error("no amount!")
 
+        log.info("TOTAL_CASH: ",TOTAL_CASH)
+        log.info("TOTAL_DAI: ",TOTAL_DAI)
         //amountIn
         let amountIn = getQuoteForSellProducingCashValue(amount)
+        log.info("amountIn: ",amountIn)
+
         //address
         let address = await signer.getAddress(WALLET_MAIN)
         
