@@ -14,7 +14,7 @@ let run_test = async () => {
             address: "0xC3aFFff54122658b89C31183CeC4F15514F34624",
         };
         let respCreate = await axios.post(
-            "http://127.0.0.1:4000/api/v1/create/lpAddAsym",
+            "http://127.0.0.1:4000/api/v1/create/lpAdd",
             bodyCreate
         );
         respCreate = respCreate.data
@@ -24,7 +24,8 @@ let run_test = async () => {
         //hit fake endpoint
         const bodyFund = {
             amount:"2",
-            asset:"DAI"
+            asset:"DAI",
+            sessionId:respCreate.sessionId
         };
         console.log("bodyFund: ",bodyFund)
         let respFund = await axios.post(

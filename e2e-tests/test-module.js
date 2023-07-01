@@ -23,7 +23,7 @@ const runTest = async () => {
 
         let status = await bankless.Status();
         // console.log("status: ",status.data)
-
+        console.log("cap: ",status.data.cap)
         //total USD in system
         console.log("balanceUSD: ",status.data.balanceUSD)
         console.log("balanceDAI: ",status.data.balanceDAI)

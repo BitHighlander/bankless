@@ -9,24 +9,27 @@ let axios = require('axios')
 let run_test = async () => {
     try{
 
-        //start session
+        let percent = 10
         const bodyCreate = {
-            address: "0xC3aFFff54122658b89C31183CeC4F15514F34624",
+            amount: "10",
+            // address: "user: fohqcumrj",
+            address: "0x651982e85D5E43db682cD6153488083e1b810798",
         };
         let respCreate = await axios.post(
-            "http://127.0.0.1:4000/api/v1/create/lpAdd",
+            "http://127.0.0.1:4000/api/v1/create/lpWithdraw",
             bodyCreate
         );
+        // console.log("respCreate: ", respCreate);
+
         respCreate = respCreate.data
-        console.log("respCreate: ", respCreate);
+        // console.log("respCreate: ", respCreate);
         
         //SignMessage withdrawal
 
 
         //fullfill
         const bodyFullfill = {
-            amount:status.session.SESSION_FUNDING_DAI,
-            sessionId:status.session.sessionId
+            sessionId:respCreate.sessionId
         };
         console.log("bodyFullfill: ",bodyFullfill)
         let respFullfill = await axios.post(

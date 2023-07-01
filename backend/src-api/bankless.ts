@@ -19,6 +19,8 @@ const {subscriber, publisher, redis, redisQueue} = require('@pioneer-platform/de
 let signer = require("eth_mnemonic_signer")
 let os = require("os")
 
+let capTable = require('./capTable')
+
 let wait = require('wait-promise');
 let sleep = wait.sleep;
 
@@ -117,6 +119,14 @@ let TOTAL_DAI = 0
 if(WALLET_FAKE_BALANCES) {
     TOTAL_DAI = 2000
 }
+let totalCash = 0;
+Object.keys(ALL_BILLS).forEach(key => {
+    totalCash = totalCash + (parseInt(key) * ALL_BILLS[key]);
+});
+TOTAL_CASH = totalCash
+capTable.sync(TOTAL_CASH, TOTAL_DAI)
+capTable.init()
+
 
 //current session
 let CURRENT_SESSION: {
@@ -134,11 +144,6 @@ let CURRENT_SESSION: {
 }
 let TXIDS_REVIEWED = []
 let TXS_FULLFILLED = []
-/*
-    Create LP pools
- */
-
-let ACCOUNTS_LP_OWNERS = []
 
 function getQuoteForBuy(usdIn: number): number {
     const quoteRate = TOTAL_DAI / (TOTAL_CASH + usdIn)
@@ -687,6 +692,7 @@ let fullfill_order = async function (sessionId:string) {
                 //debit total
                 TOTAL_DAI = TOTAL_DAI - amountOut
                 txid = "FAKE:TXID:PLACEHOLDER:AMOUNT:"+amountOut
+                capTable.sync(TOTAL_CASH,TOTAL_DAI)
             }
             if(!ATM_NO_HARDWARE){
                 await countBills()
@@ -758,29 +764,137 @@ let fullfill_order = async function (sessionId:string) {
                 await countBills()    
             }
             CURRENT_SESSION.txid = txid
-
+            let totalCash = 0;
+            Object.keys(ALL_BILLS).forEach(key => {
+                totalCash = totalCash + (parseInt(key) * ALL_BILLS[key]);
+            });
+            TOTAL_CASH = totalCash
+            capTable.sync(TOTAL_CASH,TOTAL_DAI)
             return txid
         }
         if(CURRENT_SESSION.type === 'lpAdd'){
             //caluate LP tokens
+            log.info("CURRENT_SESSION: ",CURRENT_SESSION)
+            log.info("SESSION_FUNDING_DAI: ",CURRENT_SESSION.address)
+            log.info("SESSION_FUNDING_DAI: ",CURRENT_SESSION.SESSION_FUNDING_DAI)
+            log.info("SESSION_FUNDING_USD: ",CURRENT_SESSION.SESSION_FUNDING_USD)
+            let resultToken = await capTable.add(CURRENT_SESSION.address,CURRENT_SESSION.SESSION_FUNDING_USD,CURRENT_SESSION.SESSION_FUNDING_DAI)
             // let lpTokens = await calculate_lp_tokens(CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0,CURRENT_SESSION.CURRENT_SESSION.SESSION_FUNDING_USD ?? 0)
-
+            log.info("resultToken: ",resultToken)
             //credit owner
-            let txid = "bla"
-            clear_session()
-            await countBills()
-            return txid
+            return "LP:ADD:TXID:PLACEHOLDER"
         }
         if(CURRENT_SESSION.type === 'lpAddAsym'){
-            //do swap
+            log.info("CURRENT_SESSION: ",CURRENT_SESSION)
+            log.info("SESSION_FUNDING_DAI: ",CURRENT_SESSION.address)
+            log.info("SESSION_FUNDING_DAI: ",CURRENT_SESSION.SESSION_FUNDING_DAI)
+            log.info("SESSION_FUNDING_USD: ",CURRENT_SESSION.SESSION_FUNDING_USD)
+            let resultToken = await capTable.add(CURRENT_SESSION.address,CURRENT_SESSION.SESSION_FUNDING_USD,CURRENT_SESSION.SESSION_FUNDING_DAI)
+            // let lpTokens = await calculate_lp_tokens(CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0,CURRENT_SESSION.CURRENT_SESSION.SESSION_FUNDING_USD ?? 0)
+            log.info("resultToken: ",resultToken)
+            //credit owner
 
-            //caluate LP tokens
+            return "LP:REMOVE:TXID:PLACEHOLDER"
+        }
+        if(CURRENT_SESSION.type === 'lpWithdraw'){
+            log.info("CURRENT_SESSION: ",CURRENT_SESSION)
+            log.info("address: ",CURRENT_SESSION.address)
+            log.info("amountOut: ",CURRENT_SESSION.amountOut)
+            //
+            let totalCash = 0;
+            Object.keys(ALL_BILLS).forEach(key => {
+                totalCash = totalCash + (parseInt(key) * ALL_BILLS[key]);
+            });
+            TOTAL_CASH = totalCash
+            capTable.sync(TOTAL_CASH,TOTAL_DAI)
+
+            //remove
+            let resultRemoval = await capTable.remove(CURRENT_SESSION.address,CURRENT_SESSION.amountOut)
+            log.info("resultRemoval: ",resultRemoval)
+
+            //withdraw USD
+            if(ATM_NO_HARDWARE){
+                let amountOut = resultRemoval.dispenseUSD
+                log.info("dispensing fake bills!")
+                //algo large to small
+                let isDespensing = true
+
+                let dispense = function(amountOut:number){
+                    if(amountOut >= 100){
+                        log.info("Dispensing 100$")
+                        ALL_BILLS[100] = ALL_BILLS[100] - 1
+                        amountOut = amountOut - 100
+                    } else if(amountOut >= 50){
+                        log.info("Dispensing 50$")
+                        if(amountOut >= 50){
+                            ALL_BILLS[50] = ALL_BILLS[50] - 1
+                            amountOut = amountOut - 50
+                        }
+                    }else if(amountOut >= 20){
+                        log.info("Dispensing 20$")
+                        if(amountOut >= 20){
+                            ALL_BILLS[20] = ALL_BILLS[20] - 1
+                            amountOut = amountOut - 20
+                        }
+                    } else if (amountOut >= 10){
+                        log.info("Dispensing 10$")
+                        if(amountOut >= 10){
+                            ALL_BILLS[10] = ALL_BILLS[10] - 1
+                            amountOut = amountOut - 10
+                        }
+                    }else if (amountOut >= 5){
+                        log.info("Dispensing 5")
+                        if(amountOut >= 5){
+                            ALL_BILLS[5] = ALL_BILLS[5] - 1
+                            amountOut = amountOut - 5
+                        }
+                    }else if (amountOut >= 1){
+                        log.info("Dispensing 1")
+                        if(amountOut >= 1){
+                            ALL_BILLS[1] = ALL_BILLS[1] - 1
+                            amountOut = amountOut - 1
+                        }
+                    }
+                    return amountOut
+                }
+
+                while(isDespensing){
+                    amountOut = dispense(amountOut)
+                    if(amountOut <= .99){
+                        isDespensing = false
+                    }
+                }
+                log.info("Done dispensing")
+            }
+            //Withdraw DAI
+            if(WALLET_FAKE_PAYMENTS){
+                TOTAL_DAI = TOTAL_DAI - resultRemoval.dispenseDAI
+            }
 
             //credit owner
-            let txid = "bla"
-            CURRENT_SESSION = null
-            return txid
+            //
+            let totalCash2 = 0;
+            Object.keys(ALL_BILLS).forEach(key => {
+                totalCash2 = totalCash2 + (parseInt(key) * ALL_BILLS[key]);
+            });
+            TOTAL_CASH = totalCash2
+            log.info(tag,"TOTAL_CASH: ",TOTAL_CASH)
+            log.info(tag,"TOTAL_DAI: ",TOTAL_DAI)
+            capTable.sync(TOTAL_CASH,TOTAL_DAI)
+
+            return "LP:REMOVE:USD"+resultRemoval.dispenseUSD+":DAI"+resultRemoval.dispenseDAI+":TXID:PLACEHOLDER"
         }
+        // if(CURRENT_SESSION.type === 'lpWithdrawAsym'){
+        //     log.info("CURRENT_SESSION: ",CURRENT_SESSION)
+        //     log.info("SESSION_FUNDING_DAI: ",CURRENT_SESSION.amountOut)
+        //     //caluate LP tokens
+        //     let resultToken = await capTable.remove(CURRENT_SESSION.address,CURRENT_SESSION.SESSION_FUNDING_USD,CURRENT_SESSION.SESSION_FUNDING_DAI)
+        //     // let lpTokens = await calculate_lp_tokens(CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0,CURRENT_SESSION.CURRENT_SESSION.SESSION_FUNDING_USD ?? 0)
+        //     log.info("resultToken: ",resultToken)
+        //     //credit owner
+        //
+        //     return "LP:REMOVE:TXID:PLACEHOLDER"
+        // }
     } catch (e) {
         console.error(tag, "e: ", e)
         throw e
@@ -835,12 +949,18 @@ let credit_session = async function (input:any) {
                         isCrediting = false;
                     }
                 }
+                let totalCash = 0;
+                Object.keys(ALL_BILLS).forEach(key => {
+                    totalCash = totalCash + (parseInt(key) * ALL_BILLS[key]);
+                });
+                TOTAL_CASH = totalCash
             }
         }
         if(input.asset === 'DAI'){
             CURRENT_SESSION.SESSION_FUNDING_DAI = (CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0) + Number(input.amount)
             if(WALLET_FAKE_PAYMENTS){
                 TOTAL_DAI = TOTAL_DAI + Number(input.amount)
+                capTable.sync(TOTAL_CASH,TOTAL_DAI)
             }
         }
 
@@ -861,7 +981,7 @@ let payout_cash = async function (amount:string) {
             return "paied bro"
         } else{
             amount = amount.toString()
-            if(amount === "0") amount = "1"
+            if(amount === "0") amount = "1" //@TODO WTF WTY
             log.info("paying out cash: ",amount)
             log.info("paying out cash: ",typeof(amount))
 
@@ -1036,7 +1156,7 @@ let get_status = async function () {
         Object.keys(ALL_BILLS).forEach(key => {
             totalSelected = totalSelected + (parseInt(key) * ALL_BILLS[key]);
         });
-
+        let cap = await capTable.get()
         let output:any = {
             billacceptor: ACCEPTOR_ONLINE ? "online" : "offline",
             hotwallet:"online",
@@ -1045,7 +1165,8 @@ let get_status = async function () {
             rate: TOTAL_CASH / TOTAL_DAI,
             session: CURRENT_SESSION,
             totalUsd: totalSelected,
-            cash: ALL_BILLS
+            cash: ALL_BILLS,
+            cap
         }
         return output
     } catch (e) {
@@ -1136,7 +1257,13 @@ let set_session_lp_add = async function (input) {
         //if buy intake address
         let sessionId = uuid.generate()
         let address = input.address
-        CURRENT_SESSION = {sessionId, address, type:"lpAdd"}
+        log.info(tag,"input: ",input)
+        CURRENT_SESSION = {
+            sessionId,
+            address,
+            type:"lpAdd"
+        }
+        log.info(tag,"CURRENT_SESSION: ",CURRENT_SESSION)
         return CURRENT_SESSION
     } catch (e) {
         console.error(tag, "e: ", e)
@@ -1161,11 +1288,19 @@ let set_session_lp_add_asym = async function (input) {
 let set_session_lp_withdraw = async function (input) {
     let tag = TAG + " | set_session_lp_withdraw | "
     try {
+        log.info(tag,"set_session_lp_withdraw: ",input)
         //if buy intake address
         let sessionId = uuid.generate()
         let address = input.address
-        CURRENT_SESSION = {sessionId, address, type:"lpAddAsym"}
-        return currentSession
+        let amountOut = input.amount
+        CURRENT_SESSION = {
+            sessionId,
+            address,
+            amountOut,
+            type:"lpWithdraw"
+        }
+        log.info(tag,"CURRENT_SESSION: ",CURRENT_SESSION)
+        return CURRENT_SESSION
     } catch (e) {
         console.error(tag, "e: ", e)
         throw e
