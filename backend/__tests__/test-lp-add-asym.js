@@ -14,7 +14,7 @@ let run_test = async () => {
             address: "0xC3aFFff54122658b89C31183CeC4F15514F34624",
         };
         let respCreate = await axios.post(
-            "http://127.0.0.1:4000/api/v1/create/lpAdd",
+            "http://127.0.0.1:4000/api/v1/create/lpAddAsym",
             bodyCreate
         );
         respCreate = respCreate.data
@@ -23,7 +23,7 @@ let run_test = async () => {
         //deposit dollars
         //hit fake endpoint
         const bodyFund = {
-            amount:"2",
+            amount:"100",
             asset:"DAI",
             sessionId:respCreate.sessionId
         };
@@ -36,17 +36,9 @@ let run_test = async () => {
         // eslint-disable-next-line no-console
         console.log("respFund: ", respFund);
 
-        //get last session
-        let status = await axios.get(
-            "http://localhost:4000/api/v1/" + "status"
-        );
-        status = status.data
-        console.log("status: ",status)
-
         //fullfill
         const bodyFullfill = {
-            amount:status.session.SESSION_FUNDING_DAI,
-            sessionId:status.session.sessionId
+            sessionId:respCreate.sessionId
         };
         console.log("bodyFullfill: ",bodyFullfill)
         let respFullfill = await axios.post(
@@ -56,7 +48,6 @@ let run_test = async () => {
         respFullfill = respFullfill.data
         // eslint-disable-next-line no-console
         console.log("respFullfill: ", respFullfill);
-
 
         //get crypto info
 

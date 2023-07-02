@@ -303,7 +303,6 @@ export class IndexController extends Controller {
     /*
     * HACK DEPOSIT
     *
-    *
     * */
     @Post('/hack/fund')
     public async fund(@Body() body: BodyFund): Promise<any> {
@@ -468,7 +467,7 @@ export class IndexController extends Controller {
     }
 
     /*
-    * createLpAdd
+    * lpAddAsym
     *
     *
     * */
@@ -480,7 +479,7 @@ export class IndexController extends Controller {
             let input  = {
                 address:body.address
             }
-            let session = await Bankless.setSessionLpAddAsym(input.address)
+            let session = await Bankless.setSessionLpAddAsym(input)
             return session
         } catch(e){
             let errorResp:Error = {

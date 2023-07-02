@@ -22,7 +22,7 @@ const runTest = async () => {
         // console.log("health: ",health)
 
         let status = await bankless.Status();
-        // console.log("status: ",status.data)
+        console.log("status: ",status.data)
         console.log("cap: ",status.data.cap)
         //total USD in system
         console.log("balanceUSD: ",status.data.balanceUSD)

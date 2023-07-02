@@ -18,7 +18,7 @@ const log = require('@pioneer-platform/loggerdog')();
 const {subscriber, publisher, redis, redisQueue} = require('@pioneer-platform/default-redis')
 let signer = require("eth_mnemonic_signer")
 let os = require("os")
-
+let Events = require("@pioneer-platform/pioneer-events")
 let capTable = require('./capTable')
 
 let wait = require('wait-promise');
@@ -27,6 +27,15 @@ let sleep = wait.sleep;
 let URL_WALLET = "http://localhost:3001"
 let WALLET_MAIN = process.env['WALLET_MAIN']
 if(!WALLET_MAIN) throw Error("Missing WALLET_MAIN from ENV!")
+
+let TERMINAL_NAME = process.env['TERMINAL_NAME']
+if(!TERMINAL_NAME) throw Error("TERMINAL_NAME is required!")
+
+let PIONEER_WS = process.env['PIONEER_WS']
+if(!PIONEER_WS) throw Error("PIONEER_WS is required!")
+
+let QUERY_KEY = process.env['QUERY_KEY']
+if(!QUERY_KEY) throw Error("QUERY_KEY is required!")
 
 let NO_BROADCAST = process.env['WALLET_NO_BROADCAST']
 if(NO_BROADCAST) log.info(" NERFED! wallet will not send crypto!")
@@ -354,10 +363,6 @@ let onStartAcceptor = async function(){
         console.error(e)
     }
 }
-if(!ATM_NO_HARDWARE){
-    onStartAcceptor()    
-}
-
 
 let countBills = async function(){
     try{
@@ -484,7 +489,28 @@ let sub_for_payments = async function(){
         console.error(e)
     }
 }
-sub_for_payments()
+
+let onStart = async function (){
+    try{
+        //
+        let config = {
+            queryKey:QUERY_KEY,
+            wss:PIONEER_WS
+        }
+
+        //sub ALL events
+        let clientEvents = new Events.Events(config)
+        clientEvents.init()
+        
+        //start
+        sub_for_payments()
+        if(!ATM_NO_HARDWARE){
+            onStartAcceptor()
+        }
+    }catch(e){
+        log.error(e)
+    }
+}
 
 module.exports = {
     status: async function () {
@@ -508,7 +534,7 @@ module.exports = {
     setSessionLpWithdraw: async function (input:any) {
         return set_session_lp_withdraw(input);
     },
-    setSessionLpAddAsy: async function (input:any) {
+    setSessionLpAddAsym: async function (input:any) {
         return set_session_lp_add_asym(input);
     },
     setSessionLpWithdrawAsym: async function (input:any) {
@@ -772,7 +798,7 @@ let fullfill_order = async function (sessionId:string) {
             capTable.sync(TOTAL_CASH,TOTAL_DAI)
             return txid
         }
-        if(CURRENT_SESSION.type === 'lpAdd'){
+        if(CURRENT_SESSION.type === 'lpAdd' || CURRENT_SESSION.type === 'lpAddAsym'){
             //caluate LP tokens
             log.info("CURRENT_SESSION: ",CURRENT_SESSION)
             log.info("SESSION_FUNDING_DAI: ",CURRENT_SESSION.address)
@@ -784,22 +810,11 @@ let fullfill_order = async function (sessionId:string) {
             //credit owner
             return "LP:ADD:TXID:PLACEHOLDER"
         }
-        if(CURRENT_SESSION.type === 'lpAddAsym'){
-            log.info("CURRENT_SESSION: ",CURRENT_SESSION)
-            log.info("SESSION_FUNDING_DAI: ",CURRENT_SESSION.address)
-            log.info("SESSION_FUNDING_DAI: ",CURRENT_SESSION.SESSION_FUNDING_DAI)
-            log.info("SESSION_FUNDING_USD: ",CURRENT_SESSION.SESSION_FUNDING_USD)
-            let resultToken = await capTable.add(CURRENT_SESSION.address,CURRENT_SESSION.SESSION_FUNDING_USD,CURRENT_SESSION.SESSION_FUNDING_DAI)
-            // let lpTokens = await calculate_lp_tokens(CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0,CURRENT_SESSION.CURRENT_SESSION.SESSION_FUNDING_USD ?? 0)
-            log.info("resultToken: ",resultToken)
-            //credit owner
-
-            return "LP:REMOVE:TXID:PLACEHOLDER"
-        }
-        if(CURRENT_SESSION.type === 'lpWithdraw'){
+        if(CURRENT_SESSION.type === 'lpWithdraw' || CURRENT_SESSION.type === 'lpWithdrawAsym'){
             log.info("CURRENT_SESSION: ",CURRENT_SESSION)
             log.info("address: ",CURRENT_SESSION.address)
             log.info("amountOut: ",CURRENT_SESSION.amountOut)
+
             //
             let totalCash = 0;
             Object.keys(ALL_BILLS).forEach(key => {
@@ -901,20 +916,21 @@ let fullfill_order = async function (sessionId:string) {
     }
 }
 
-let credit_session = async function (input:any) {
-    let tag = TAG + " | credit_session | "
+const credit_session = async function (input) {
+    let tag = TAG + " | credit_session | ";
     try {
-        if(!input.asset) throw Error("No asset!")
-        if(!input.amount) throw Error("No amount!")
-        if(!input.sessionId) throw Error("No sessionId!")
-        log.info(tag,"input: ",input)
-        if(input.asset === 'USD'){
-            CURRENT_SESSION.SESSION_FUNDING_USD = (CURRENT_SESSION.SESSION_FUNDING_USD ?? 0) + parseInt(input.amount)
-            if(WALLET_FAKE_PAYMENTS){
-                let amountIn = input.amount
-                // credit bills
+        if (!input.asset) throw Error("No asset!");
+        if (!input.amount) throw Error("No amount!");
+        if (!input.sessionId) throw Error("No sessionId!");
+        log.info(tag, "input: ", input);
+        log.info(tag, "CURRENT_SESSION: ", CURRENT_SESSION);
+        if (input.asset === 'USD') {
+            CURRENT_SESSION.SESSION_FUNDING_USD = (CURRENT_SESSION.SESSION_FUNDING_USD ?? 0) + parseInt(input.amount);
+            if (WALLET_FAKE_PAYMENTS) {
+                let amountIn = parseInt(input.amount);
+                // Credit bills
                 let isCrediting = true;
-                let deposit = function(amountIn: number) {
+                let deposit = function (amountIn) {
                     if (amountIn >= 100) {
                         log.info("Depositing 100$");
                         ALL_BILLS[100] = ALL_BILLS[100] + 1;
@@ -953,24 +969,50 @@ let credit_session = async function (input:any) {
                 Object.keys(ALL_BILLS).forEach(key => {
                     totalCash = totalCash + (parseInt(key) * ALL_BILLS[key]);
                 });
-                TOTAL_CASH = totalCash
-            }
-        }
-        if(input.asset === 'DAI'){
-            CURRENT_SESSION.SESSION_FUNDING_DAI = (CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0) + Number(input.amount)
-            if(WALLET_FAKE_PAYMENTS){
-                TOTAL_DAI = TOTAL_DAI + Number(input.amount)
-                capTable.sync(TOTAL_CASH,TOTAL_DAI)
+                TOTAL_CASH = totalCash;
             }
         }
 
-        publisher.publish('payments',JSON.stringify(input))
-        return true
+        if (input.asset === 'DAI') {
+            CURRENT_SESSION.SESSION_FUNDING_DAI = (CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0) + parseFloat(input.amount);
+            if (WALLET_FAKE_PAYMENTS) {
+                TOTAL_DAI = TOTAL_DAI + parseFloat(input.amount);
+                capTable.sync(TOTAL_CASH, TOTAL_DAI);
+            }
+        }
+
+        if (CURRENT_SESSION.type === 'lpAddAsym') {
+            if (input.asset === 'USD') {
+                const usdAmount = parseFloat(input.amount);
+                const halfUsdAmount = usdAmount / 2;
+                const convertedDai = getQuoteForBuy(halfUsdAmount);
+
+                CURRENT_SESSION.SESSION_FUNDING_USD = halfUsdAmount;
+                CURRENT_SESSION.SESSION_FUNDING_DAI = convertedDai;
+
+                log.info(tag, "SESSION_FUNDING_USD: ", CURRENT_SESSION.SESSION_FUNDING_USD);
+                log.info(tag, "SESSION_FUNDING_DAI: ", CURRENT_SESSION.SESSION_FUNDING_DAI);
+
+            } else if (input.asset === 'DAI') {
+                const daiAmount = parseFloat(input.amount);
+                const halfDaiAmount = daiAmount / 2;
+                const convertedUsd = getQuoteForSellOfExactCryptoValue(halfDaiAmount);
+
+                CURRENT_SESSION.SESSION_FUNDING_DAI = halfDaiAmount;
+                CURRENT_SESSION.SESSION_FUNDING_USD = convertedUsd;
+
+                log.info(tag, "SESSION_FUNDING_DAI: ", CURRENT_SESSION.SESSION_FUNDING_DAI);
+                log.info(tag, "SESSION_FUNDING_USD: ", CURRENT_SESSION.SESSION_FUNDING_USD);
+            }
+        }
+
+        publisher.publish('payments', JSON.stringify(input));
+        return true;
     } catch (e) {
-        console.error(tag, "e: ", e)
-        throw e
+        console.error(tag, "e: ", e);
+        throw e;
     }
-}
+};
 
 let payout_cash = async function (amount:string) {
     let tag = TAG + " | payout_cash | "
