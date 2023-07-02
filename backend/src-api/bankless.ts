@@ -438,7 +438,7 @@ let sub_for_payments = async function(){
                         let paymentAmountDai = 0
                         for(let i = 0; i < respTx.data.tokenTransfers.length; i++){
                             let transfer = respTx.data.tokenTransfers[i]
-                            if(transfer["symbol"] == "DAI" && transfer.contract === DAI_CONTRACT){
+                            if(transfer["symbol"] == "DAI" && transfer.contract.toLowerCase() === DAI_CONTRACT){
                                 paymentAmountDai = parseInt(transfer.value) / 1000000000000000000
                                 CURRENT_SESSION.SESSION_FUNDING_DAI = (CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0) + paymentAmountDai
                             }
