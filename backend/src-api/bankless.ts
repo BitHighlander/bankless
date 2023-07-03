@@ -218,14 +218,16 @@ let onStartAcceptor = async function(){
         let system = os.platform()
         log.info("system: ",system)
         if(system === "darwin"){
-            await eSSP.open('/dev/tty.usbserial-AQ031MU7', serialPortConfig)
+           // nv4000 '/dev/tty.usbserial-AQ031MU7' nv200 tty.usbserial-A9013GG1
+            await eSSP.open('/dev/tty.usbserial-A9013GG1', serialPortConfig)
         } else {
             await eSSP.open('/dev/ttyUSB0', serialPortConfig)
         }
         await eSSP.command('SYNC')
         await eSSP.command('HOST_PROTOCOL_VERSION', { version: 6 })
         console.log('disabling payin')
-        await eSSP.disable()
+       //await eSSP.disable()
+
 
         console.log('encryption init')
         await eSSP.initEncryption()
@@ -245,7 +247,7 @@ let onStartAcceptor = async function(){
         })
 
         console.log('resetting routes')
-        const payoutDenoms = [100, 500, 1000, 2000]
+        const payoutDenoms = [100, 500, 1000, 2000, 5000, 10000]
         for (let i = 0; i < channels.length; i++) {
             const channel = channels[i]
             // TODO: country code check
@@ -305,7 +307,8 @@ let onStartAcceptor = async function(){
             }
         }
         ACCEPTOR_ONLINE = true
-        onStartSession()
+        await eSSP.disable()
+        await onStartSession()
     }catch(e){
         console.error(e)
     }
@@ -385,7 +388,7 @@ let sub_for_payments = async function(){
                     let paymentAmountDai = 0
                     for(let i = 0; i < respTx.data.tokenTransfers.length; i++){
                         let transfer = respTx.data.tokenTransfers[i]
-                        if(transfer["symbol"] == "DAI" && transfer.contract === DAI_CONTRACT){
+                        if(transfer["symbol"] == "DAI" && transfer.contract.toLowerCase() === DAI_CONTRACT){
                             paymentAmountDai = parseInt(transfer.value) / 1000000000000000000
                             CURRENT_SESSION.SESSION_FUNDING_DAI = (CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0) + paymentAmountDai
                         }
@@ -660,13 +663,13 @@ let credit_session = async function (input:any) {
 let payout_cash = async function (amount:string) {
     let tag = TAG + " | payout_cash | "
     try {
+        if(amount == "0") throw Error("youre and idiot sending 0");
         log.info(tag,"Paying out cash!: ",amount)
         if(NO_BROADCAST){
             log.info("NO_BROADCAST set not paying")
             return "paied bro"
         } else{
             amount = amount.toString()
-            if(amount === "0") amount = "1"
             log.info("paying out cash: ",amount)
             log.info("paying out cash: ",typeof(amount))
 
@@ -886,6 +889,7 @@ let start_session = async function (input:any) {
 
 let set_session_buy = async function (input:any) {
     let tag = TAG + " | set_session_buy | "
+    await eSSP.enable()
     try {
         if(!input.address) throw Error("no address!")
         //if buy intake address
