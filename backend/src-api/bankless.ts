@@ -274,7 +274,7 @@ let onStartAcceptor = async function(){
         })
         let system = os.platform()
         log.info("system: ",system)
-        await eSSP.open(process.env['USB_CONNECTION_NAME'], serialPortConfig)
+        await eSSP.open(USB_CONNECTION, serialPortConfig)
         await eSSP.command('SYNC')
         await eSSP.command('HOST_PROTOCOL_VERSION', { version: 6 })
         console.log('disabling payin')
