@@ -512,6 +512,7 @@ let onStart = async function (){
         log.error(e)
     }
 }
+onStart()
 
 module.exports = {
     status: async function () {
