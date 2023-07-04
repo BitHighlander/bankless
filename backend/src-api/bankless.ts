@@ -226,8 +226,7 @@ let onStartAcceptor = async function(){
         await eSSP.command('SYNC')
         await eSSP.command('HOST_PROTOCOL_VERSION', { version: 6 })
         console.log('disabling payin')
-       //await eSSP.disable()
-
+        await eSSP.disable()
 
         console.log('encryption init')
         await eSSP.initEncryption()
@@ -307,8 +306,7 @@ let onStartAcceptor = async function(){
             }
         }
         ACCEPTOR_ONLINE = true
-        await eSSP.disable()
-        await onStartSession()
+        onStartSession()
     }catch(e){
         console.error(e)
     }
@@ -889,7 +887,6 @@ let start_session = async function (input:any) {
 
 let set_session_buy = async function (input:any) {
     let tag = TAG + " | set_session_buy | "
-    await eSSP.enable()
     try {
         if(!input.address) throw Error("no address!")
         //if buy intake address
