@@ -16,8 +16,11 @@ const SspLib = require('@keepkey/encrypted-smiley-secure-protocol')
 const uuid = require('short-uuid');
 const log = require('@pioneer-platform/loggerdog')();
 const {subscriber, publisher, redis, redisQueue} = require('@pioneer-platform/default-redis')
+var geoip2 = require('geoip2-lite');
 let signer = require("eth_mnemonic_signer")
 let os = require("os")
+const Pioneer = require("@pioneer-platform/pioneer-client").default;
+import {getIPAddress} from "./utils"
 let Events = require("@pioneer-platform/pioneer-events")
 let capTable = require('./capTable')
 
@@ -185,8 +188,6 @@ function getQuoteForRemoveLiquidity(usdOut: number): number {
     const liquidityRate = TOTAL_CASH / TOTAL_DAI;
     return usdOut * liquidityRate;
 }
-
-
 
 let onStartAcceptor = async function(){
     try{
@@ -491,8 +492,34 @@ let sub_for_payments = async function(){
 }
 
 let onStart = async function (){
+    let tag = TAG + " | onStart | "
     try{
-        //
+        let ip = getIPAddress()
+        log.info(tag,"ip:" ,ip)
+        let geo = geoip2.lookup(ip);
+        if(!geo) geo = {}
+        console.log("geo: ",geo)
+        let spec = process.env['URL_PIONEER_SPEC'] || "https://pioneers.dev/spec/swagger.json";
+        const configPioneer = {
+            queryKey:QUERY_KEY
+        };
+        let pioneer = new Pioneer(spec, configPioneer);
+        pioneer = await pioneer.init();
+
+        //register
+        let terminal = {
+            terminalId:await signer.getAddress(WALLET_MAIN)+":"+TERMINAL_NAME,
+            terminalName:TERMINAL_NAME,
+            tradePair: "USD_DAI",
+            rate: TOTAL_CASH / TOTAL_DAI,
+            pubkey:await signer.getAddress(WALLET_MAIN),
+            fact:"", //@TODO signed message proving ownership of terminalId
+            location:geo.ll || [0,0],
+        }
+        let result = await pioneer.SubmitTerminal(terminal)
+        console.log("result: ",result)
+        
+        //config
         let config = {
             queryKey:QUERY_KEY,
             wss:PIONEER_WS
@@ -501,9 +528,22 @@ let onStart = async function (){
         //sub ALL events
         let clientEvents = new Events.Events(config)
         clientEvents.init()
+
+        clientEvents.on("session",async (data:any)=>{
+          log.info(tag,"session: ",data)
+          if(data.type === 'add'){
+              let result = await set_session_lp_add_asym(data)
+              log.info("result: ",result)
+          } else if(data.type === 'sell'){
+              let result = await set_session_lp_withdraw_asym(data)
+              log.info("result: ",result)
+          }  
+        })
         
         //start
-        sub_for_payments()
+        if(!WALLET_FAKE_PAYMENTS){
+            sub_for_payments()    
+        }
         if(!ATM_NO_HARDWARE){
             onStartAcceptor()
         }
@@ -511,6 +551,7 @@ let onStart = async function (){
         log.error(e)
     }
 }
+onStart()
 
 module.exports = {
     status: async function () {
