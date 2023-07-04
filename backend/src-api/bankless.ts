@@ -52,6 +52,9 @@ if(WALLET_FAKE_BALANCES) log.info(" WALLET_FAKE_BALANCES: will FAKE BALANCES!")
 let ATM_NO_HARDWARE = process.env['ATM_NO_HARDWARE']
 if(ATM_NO_HARDWARE) log.info(" ATM_NO_HARDWARE: not attempting hardwware!")
 
+let USB_CONNECTION = process.env['USB_CONNECTION']
+if(!USB_CONNECTION) log.info("USB_CONNECTION: REQUIRED!")
+
 // order types
 enum OrderTypes {
     Buy,
@@ -191,6 +194,7 @@ function getQuoteForRemoveLiquidity(usdOut: number): number {
 
 let onStartAcceptor = async function(){
     try{
+        log.info("onStartAcceptor")
         const channels = []
 
         const serialPortConfig = {
@@ -270,12 +274,7 @@ let onStartAcceptor = async function(){
         })
         let system = os.platform()
         log.info("system: ",system)
-        if(system === "darwin"){
-           // nv4000 '/dev/tty.usbserial-AQ031MU7' nv200 tty.usbserial-A9013GG1
-            await eSSP.open('/dev/tty.usbserial-A9013GG1', serialPortConfig)
-        } else {
-            await eSSP.open('/dev/ttyUSB0', serialPortConfig)
-        }
+        await eSSP.open(process.env['USB_CONNECTION_NAME'], serialPortConfig)
         await eSSP.command('SYNC')
         await eSSP.command('HOST_PROTOCOL_VERSION', { version: 6 })
         console.log('disabling payin')
