@@ -68,7 +68,7 @@ const Home = () => {
           <TabList>
             <Tab>Onramp</Tab>
             <Tab>Offramp</Tab>
-            {/*<Tab>LP</Tab>*/}
+            <Tab>LP</Tab>
             <Tab>Status</Tab>
           </TabList>
 
@@ -79,9 +79,9 @@ const Home = () => {
             <TabPanel>
               <Offramp />
             </TabPanel>
-            {/*<TabPanel>*/}
-            {/*  <LP />*/}
-            {/*</TabPanel>*/}
+            <TabPanel>
+              <LP />
+            </TabPanel>
             <TabPanel>
               <Status />
             </TabPanel>

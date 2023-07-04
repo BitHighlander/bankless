@@ -23,8 +23,9 @@ let run_test = async () => {
         //deposit dollars
         //hit fake endpoint
         const bodyFund = {
-            amount:"2",
-            asset:"DAI"
+            amount:"100",
+            asset:"DAI",
+            sessionId:respCreate.sessionId
         };
         console.log("bodyFund: ",bodyFund)
         let respFund = await axios.post(
@@ -35,17 +36,9 @@ let run_test = async () => {
         // eslint-disable-next-line no-console
         console.log("respFund: ", respFund);
 
-        //get last session
-        let status = await axios.get(
-            "http://localhost:4000/api/v1/" + "status"
-        );
-        status = status.data
-        console.log("status: ",status)
-
         //fullfill
         const bodyFullfill = {
-            amount:status.session.SESSION_FUNDING_DAI,
-            sessionId:status.session.sessionId
+            sessionId:respCreate.sessionId
         };
         console.log("bodyFullfill: ",bodyFullfill)
         let respFullfill = await axios.post(
@@ -55,7 +48,6 @@ let run_test = async () => {
         respFullfill = respFullfill.data
         // eslint-disable-next-line no-console
         console.log("respFullfill: ", respFullfill);
-
 
         //get crypto info
 

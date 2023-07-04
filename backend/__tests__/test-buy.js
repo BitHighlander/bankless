@@ -27,7 +27,7 @@ let run_test = async () => {
         //hit fake endpoint
         const bodyFund = {
             sessionId:respCreate.sessionId,
-            amount:"1",
+            amount:"10",
             asset:"USD"
         };
         console.log("bodyFund: ",bodyFund)

@@ -5,13 +5,26 @@ import axios from 'axios';
 
 let axios = require('axios')
 
+function generateRandomName() {
+    const characters = 'abcdefghijklmnopqrstuvwxyz';
+    let name = '';
+    const length = Math.floor(Math.random() * 10) + 1; // Generate a random length between 1 and 10
+
+    for (let i = 0; i < length; i++) {
+        const randomIndex = Math.floor(Math.random() * characters.length);
+        name += characters.charAt(randomIndex);
+    }
+
+    return name;
+}
 
 let run_test = async () => {
     try{
 
         //start session
         const bodyCreate = {
-            address: "0xC3aFFff54122658b89C31183CeC4F15514F34624",
+            // address: "user: "+generateRandomName(),
+            address: "0x651982e85D5E43db682cD6153488083e1b810798",
         };
         let respCreate = await axios.post(
             "http://127.0.0.1:4000/api/v1/create/lpAdd",
@@ -23,8 +36,9 @@ let run_test = async () => {
         //deposit dollars
         //hit fake endpoint
         const bodyFund = {
-            amount:"1",
-            asset:"DAI"
+            amount:"100",
+            asset:"DAI",
+            sessionId:respCreate.sessionId
         };
         console.log("bodyFund: ",bodyFund)
         let respFund = await axios.post(
@@ -32,13 +46,15 @@ let run_test = async () => {
             bodyFund
         );
         respFund = respFund.data
+
         // eslint-disable-next-line no-console
         console.log("respFund: ", respFund);
 
         //hit fake endpoint
         const bodyFund2 = {
-            amount:"1",
-            asset:"USD"
+            amount:"100",
+            asset:"USD",
+            sessionId:respCreate.sessionId
         };
         console.log("bodyFund2: ",bodyFund2)
         let respFund2 = await axios.post(
