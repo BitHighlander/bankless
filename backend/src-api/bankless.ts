@@ -271,7 +271,8 @@ let onStartAcceptor = async function(){
         let system = os.platform()
         log.info("system: ",system)
         if(system === "darwin"){
-            await eSSP.open('/dev/tty.usbserial-AQ031MU7', serialPortConfig)
+           // nv4000 '/dev/tty.usbserial-AQ031MU7' nv200 tty.usbserial-A9013GG1
+            await eSSP.open('/dev/tty.usbserial-A9013GG1', serialPortConfig)
         } else {
             await eSSP.open('/dev/ttyUSB0', serialPortConfig)
         }
@@ -298,7 +299,7 @@ let onStartAcceptor = async function(){
         })
 
         console.log('resetting routes')
-        const payoutDenoms = [100, 500, 1000, 2000]
+        const payoutDenoms = [100, 500, 1000, 2000, 5000, 10000]
         for (let i = 0; i < channels.length; i++) {
             const channel = channels[i]
             // TODO: country code check
@@ -492,34 +493,8 @@ let sub_for_payments = async function(){
 }
 
 let onStart = async function (){
-    let tag = TAG + " | onStart | "
     try{
-        let ip = getIPAddress()
-        log.info(tag,"ip:" ,ip)
-        let geo = geoip2.lookup(ip);
-        if(!geo) geo = {}
-        console.log("geo: ",geo)
-        let spec = process.env['URL_PIONEER_SPEC'] || "https://pioneers.dev/spec/swagger.json";
-        const configPioneer = {
-            queryKey:QUERY_KEY
-        };
-        let pioneer = new Pioneer(spec, configPioneer);
-        pioneer = await pioneer.init();
-
-        //register
-        let terminal = {
-            terminalId:await signer.getAddress(WALLET_MAIN)+":"+TERMINAL_NAME,
-            terminalName:TERMINAL_NAME,
-            tradePair: "USD_DAI",
-            rate: TOTAL_CASH / TOTAL_DAI,
-            pubkey:await signer.getAddress(WALLET_MAIN),
-            fact:"", //@TODO signed message proving ownership of terminalId
-            location:geo.ll || [0,0],
-        }
-        let result = await pioneer.SubmitTerminal(terminal)
-        console.log("result: ",result)
-        
-        //config
+        //
         let config = {
             queryKey:QUERY_KEY,
             wss:PIONEER_WS
@@ -528,22 +503,9 @@ let onStart = async function (){
         //sub ALL events
         let clientEvents = new Events.Events(config)
         clientEvents.init()
-
-        clientEvents.on("session",async (data:any)=>{
-          log.info(tag,"session: ",data)
-          if(data.type === 'add'){
-              let result = await set_session_lp_add_asym(data)
-              log.info("result: ",result)
-          } else if(data.type === 'sell'){
-              let result = await set_session_lp_withdraw_asym(data)
-              log.info("result: ",result)
-          }  
-        })
         
         //start
-        if(!WALLET_FAKE_PAYMENTS){
-            sub_for_payments()    
-        }
+        sub_for_payments()
         if(!ATM_NO_HARDWARE){
             onStartAcceptor()
         }
@@ -551,7 +513,6 @@ let onStart = async function (){
         log.error(e)
     }
 }
-onStart()
 
 module.exports = {
     status: async function () {
