@@ -7,7 +7,8 @@ const Onramp = () => {
     rate: "...",
     sessionId: "...",
   });
-
+  const [sessionId, setSessionId] = React.useState(null);
+  
   const clearSession = async function () {
     try {
       // eslint-disable-next-line no-console
@@ -15,7 +16,7 @@ const Onramp = () => {
 
       //fullfill
       const body = {
-        sessionId:"test"
+        sessionId
       };
       let submitResp = await axios.post(
           "http://127.0.0.1:4000/api/v1/clear",
@@ -38,7 +39,9 @@ const Onramp = () => {
         "http://localhost:4000/api/v1/" + "status"
       );
       setStatus(status.data);
-      //setStatus(status.data.sessionId);
+      if(status.data.sessionId){
+        setStatus(status.data.sessionId);
+      }
       // eslint-disable-next-line no-console
       console.log("status: ", status.data);
     } catch (e) {
