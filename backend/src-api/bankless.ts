@@ -322,8 +322,8 @@ let onStartAcceptor = async function(){
         console.log('enable refill mode')
         await eSSP.command('SET_REFILL_MODE', { mode: 'on' })
 
-        console.log('enable payin')
-        await eSSP.enable()
+        // console.log('enable payin')
+        // await eSSP.enable()
 
         console.log('enable payout')
         await eSSP.command('ENABLE_PAYOUT_DEVICE', {REQUIRE_FULL_STARTUP: false, GIVE_VALUE_ON_STORED: true})
@@ -598,6 +598,9 @@ let clear_session = function () {
             SESSION_FUNDING_USD: 0,
             SESSION_FUNDING_DAI: 0,
             SESSION_FULLFILLED: false,
+        }
+        if(!ATM_NO_HARDWARE){
+            eSSP.disable()
         }
     } catch (e) {
         console.error(tag, "e: ", e)
@@ -1261,6 +1264,7 @@ let set_session_buy = async function (input:any) {
         let sessionId = uuid.generate()
         let address = input.address
         CURRENT_SESSION = {sessionId, address, type:"buy"}
+        await eSSP.enable()
         //@TODO save to mongo
         return CURRENT_SESSION
     } catch (e) {
