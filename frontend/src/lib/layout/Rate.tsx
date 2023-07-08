@@ -13,18 +13,24 @@ const Onramp = () => {
     try {
       // eslint-disable-next-line no-console
       console.log("onDone: ");
-
-      //fullfill
-      const body = {
-        sessionId
-      };
-      let submitResp = await axios.post(
-          "http://127.0.0.1:4000/api/v1/clear",
-          body
+      const status = await axios.get(
+          "http://localhost:4000/api/v1/" + "status"
       );
-      submitResp = submitResp.data
-      // eslint-disable-next-line no-console
-      console.log("submitResp: ", submitResp);
+      setStatus(status.data);
+      if(status.data.sessionId){
+        //fullfill
+        const body = {
+          sessionId
+        };
+        let submitResp = await axios.post(
+            "http://127.0.0.1:4000/api/v1/clear",
+            body
+        );
+        submitResp = submitResp.data
+        // eslint-disable-next-line no-console
+        console.log("submitResp: ", submitResp);
+      }
+
       window.location.reload();
     } catch (e) {
       // eslint-disable-next-line no-console
