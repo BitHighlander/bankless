@@ -503,6 +503,13 @@ let onStart = async function (){
         let clientEvents = new Events.Events(config)
         clientEvents.init()
         
+        //getIPAddress
+        let ip = await getIPAddress()
+        log.info("ip: ",ip)
+        await geoip2.reloadDataSync();
+        var geo = geoip2.lookup(ip);
+        log.info("geo: ",geo)
+
         //start
         sub_for_payments()
         if(!ATM_NO_HARDWARE){

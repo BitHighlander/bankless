@@ -1,13 +1,17 @@
-const os = require('os');
+const http = require('http');
 
 export const getIPAddress = () => {
-    const interfaces = os.networkInterfaces();
-    for (const interfaceName in interfaces) {
-        const addresses = interfaces[interfaceName];
-        for (const address of addresses) {
-            if (address.family === 'IPv4' && !address.internal) {
-                return address.address;
-            }
-        }
-    }
+    return new Promise((resolve, reject) => {
+        http.get('http://api.ipify.org', (res) => {
+            let data = '';
+            res.on('data', (chunk) => {
+                data += chunk;
+            });
+            res.on('end', () => {
+                resolve(data);
+            });
+        }).on('error', (err) => {
+            reject(err);
+        });
+    });
 };
