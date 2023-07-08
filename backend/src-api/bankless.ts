@@ -402,7 +402,7 @@ let countBills = async function(){
 let sub_for_payments = async function(){
     let tag = " | sub_for_payments | "
     try{
-    let address = await signer.getAddress(WALLET_MAIN)
+        let address = await signer.getAddress(WALLET_MAIN)
         log.info(tag,"address: ",address)
 
         //let first start
@@ -479,10 +479,10 @@ let sub_for_payments = async function(){
 
 
                 firstStart = false
-                await sleep(300000)
+                await sleep(3000)
             }catch(e){
                 console.log("unable to scan, trying again")
-                await sleep(300000)
+                await sleep(3000)
             }
 
         }
