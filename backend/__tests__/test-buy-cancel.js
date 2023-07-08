@@ -5,8 +5,6 @@ import axios from 'axios';
 
 let axios = require('axios')
 let assert = require('assert');
-let wait = require('wait-promise');
-let sleep = wait.sleep;
 
 let run_test = async () => {
     try{
@@ -61,7 +59,17 @@ let run_test = async () => {
         // // eslint-disable-next-line no-console
         // console.log("respFullfill: ", respFullfill);
 
-
+        await sleep(10000)
+        
+        //clear sessions
+        const body = {
+            sessionId:respCreate.sessionId
+        };
+        let submitResp = await axios.post(
+            "http://127.0.0.1:4000/api/v1/clear",
+            body
+        );
+        submitResp = submitResp.data
     }catch(e){
         console.error(e)
     }
