@@ -496,12 +496,40 @@ let onStart = async function (){
         //
         let config = {
             queryKey:QUERY_KEY,
+            username:TERMINAL_NAME,
             wss:PIONEER_WS
         }
 
         //sub ALL events
         let clientEvents = new Events.Events(config)
         clientEvents.init()
+        clientEvents.setUsername(config.username)
+        let events = await 
+        //on event
+        clientEvents.events.on('message', async (event:any) => {
+            let tag = TAG + " | events | "
+            try{
+                log.info(tag,"event: ",event)
+                log.info(tag,"event: ",event.payload)
+                if(event.payload && event.payload.type == "lpAddAsym"){
+                    let sessionId = await set_session_lp_add_asym(event.payload)
+                    log.info(tag,"sessionId: ",sessionId)
+                    let payload = event.payload
+                    payload.sessionId = sessionId.sessionId
+                    payload.address = await signer.getAddress(WALLET_MAIN)
+                    clientEvents.send('message', payload)
+                }else if(event.type == "lpWithdrawAsym"){
+                    let sessionId = await set_session_lp_withdraw_asym(event.payload)
+                    log.info(tag,"sessionId: ",sessionId)
+                    let payload = event.payload
+                    payload.sessionId = sessionId.sessionId
+                    payload.address = await signer.getAddress(WALLET_MAIN)
+                    clientEvents.send('message', payload)
+                }    
+            }catch(e){
+                log.error(e)
+            }
+        })
         
         //getIPAddress
         let ip = await getIPAddress()
@@ -511,7 +539,9 @@ let onStart = async function (){
         log.info("geo: ",geo)
 
         //start
-        sub_for_payments()
+        if(!WALLET_FAKE_PAYMENTS){
+            sub_for_payments()
+        }
         if(!ATM_NO_HARDWARE){
             onStartAcceptor()
         }
