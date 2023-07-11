@@ -10,7 +10,7 @@ const socket = io("ws://127.0.0.1:4000");
 
 
 // @ts-ignore
-const Buy = ({ sessionId, setSessionId }) => {
+const Buy = ({ sessionId, setSessionId, setLockTabs }) => {
   const [isConnected, setIsConnected] = useState(socket.connected);
   const [availableOnes, setAvailableOnes] = useState(0);
   const [availableFives, setAvailableFives] = useState(0);
@@ -93,6 +93,7 @@ const Buy = ({ sessionId, setSessionId }) => {
                 alert("Please select at least one bill");
                 return;
             } else {
+                setLockTabs(true);
                 const body = {
                     amount: totalSelected.toString(),
                 };
@@ -101,7 +102,6 @@ const Buy = ({ sessionId, setSessionId }) => {
                     "http://127.0.0.1:4000/api/v1/create/sell",
                     body
                 )).data;
-                setSessionId(submitResp.sessionId)
                 setReadyForDeposit(true)
                 setAddress(submitResp.address)
                 setAmountIn(submitResp.amountIn)

@@ -19,20 +19,12 @@ import axios from "axios";
 
 const Home = () => {
   const [showStats, setShowStats] = useState(null);
-  const [sessionId, setSessionId] = useState(null);
+  const [started, setIsStarted] = useState(false);
   const [lockTabs, setLockTabs] = useState(false);
 
   const startSession = async function () {
     try {
-        console.log("startSession: ")
-        const startResp = await axios.post(
-            "http://localhost:4000/api/v1/create"
-        );
-        // eslint-disable-next-line no-console
-        console.log("startResp: ", startResp);
-        console.log("startResp: ", startResp.data);
-        console.log("startResp: ", startResp.data.sessionId);
-        setSessionId(startResp.data.sessionId);
+        setIsStarted(true);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error(e);
@@ -65,7 +57,7 @@ const Home = () => {
 
   return (
     <Grid gap={4} >
-      {sessionId ? (<div>
+      {started ? (<div>
           {/*<Session />*/}
         <Tabs size='lg' variant='solid-rounded'>
           <TabList>
