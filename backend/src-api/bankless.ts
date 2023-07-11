@@ -1323,7 +1323,7 @@ let set_session_buy = async function (input:any) {
         let sessionId = uuid.generate()
         let address = input.address
         CURRENT_SESSION = {sessionId, address, type:"buy"}
-        if(ATM_NO_HARDWARE){
+        if(!ATM_NO_HARDWARE){
             await eSSP.enable()    
         }
         //@TODO save to mongo

@@ -131,7 +131,6 @@ const Onramp = ({ setLockTabs }) => {
       // @ts-ignore
       if(submitResp.type === 'buy'){
         // @ts-ignore
-        setSessionId(submitResp.sessionId);
         setSessionTypeSelected(true)
       }
 
