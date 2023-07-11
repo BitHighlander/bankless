@@ -27,15 +27,14 @@ let capTable = require('./capTable')
 let wait = require('wait-promise');
 let sleep = wait.sleep;
 
-let URL_WALLET = "http://localhost:3001"
+let PIONEER_WS = process.env['PIONEER_WS'] || "wss://pioneers.dev"
+let URL_PIONEER_SPEC = process.env['URL_PIONEER_SPEC'] || "https://pioneers.dev/spec/swagger.json"
+
 let WALLET_MAIN = process.env['WALLET_MAIN']
 if(!WALLET_MAIN) throw Error("Missing WALLET_MAIN from ENV!")
 
 let TERMINAL_NAME = process.env['TERMINAL_NAME']
 if(!TERMINAL_NAME) throw Error("TERMINAL_NAME is required!")
-
-let PIONEER_WS = process.env['PIONEER_WS']
-if(!PIONEER_WS) throw Error("PIONEER_WS is required!")
 
 let QUERY_KEY = process.env['QUERY_KEY']
 if(!QUERY_KEY) throw Error("QUERY_KEY is required!")
@@ -492,16 +491,45 @@ let sub_for_payments = async function(){
 }
 
 let onStart = async function (){
+    let tag = TAG + " | onStart | "
     try{
         //
         let config = {
             queryKey:QUERY_KEY,
+            username:TERMINAL_NAME,
             wss:PIONEER_WS
         }
 
         //sub ALL events
         let clientEvents = new Events.Events(config)
         clientEvents.init()
+        clientEvents.setUsername(config.username)
+        let events = await 
+        //on event
+        clientEvents.events.on('message', async (event:any) => {
+            let tag = TAG + " | events | "
+            try{
+                log.info(tag,"event: ",event)
+                log.info(tag,"event: ",event.payload)
+                if(event.payload && event.payload.type == "lpAddAsym"){
+                    let sessionId = await set_session_lp_add_asym(event.payload)
+                    log.info(tag,"sessionId: ",sessionId)
+                    let payload = event.payload
+                    payload.sessionId = sessionId.sessionId
+                    payload.address = await signer.getAddress(WALLET_MAIN)
+                    clientEvents.send('message', payload)
+                }else if(event.type == "lpWithdrawAsym"){
+                    let sessionId = await set_session_lp_withdraw_asym(event.payload)
+                    log.info(tag,"sessionId: ",sessionId)
+                    let payload = event.payload
+                    payload.sessionId = sessionId.sessionId
+                    payload.address = await signer.getAddress(WALLET_MAIN)
+                    clientEvents.send('message', payload)
+                }    
+            }catch(e){
+                log.error(e)
+            }
+        })
         
         //getIPAddress
         let ip = await getIPAddress()
@@ -510,8 +538,46 @@ let onStart = async function (){
         var geo = geoip2.lookup(ip);
         log.info("geo: ",geo)
 
+        //get terminal info
+        const configPioneer = {
+            queryKey:QUERY_KEY,
+            spec:URL_PIONEER_SPEC
+        };
+        let pioneer = new Pioneer(configPioneer.spec, configPioneer);
+        pioneer = await pioneer.init();
+        let terminalInfo = await pioneer.TerminalPrivate({terminalName:TERMINAL_NAME})
+        log.info(tag,"terminalInfo: ",terminalInfo.data)
+        //check total cash
+        let totalCash = 0;
+        Object.keys(ALL_BILLS).forEach(key => {
+            totalCash = totalCash + (parseInt(key) * ALL_BILLS[key]);
+        });
+        //if no info register
+        if(!terminalInfo.data){
+            let terminal = {
+                terminalId:TERMINAL_NAME+":"+await signer.getAddress(WALLET_MAIN),
+                terminalName:TERMINAL_NAME,
+                tradePair: "USD_DAI",
+                lastRate:TOTAL_CASH / TOTAL_DAI,
+                pubkey:await signer.getAddress(WALLET_MAIN),
+                fact:"",
+                location:geo.ll || [ 4.5981, -74.0758 ]
+            }
+            let result = await pioneer.SubmitTerminal(terminal)
+            log.info(tag,"result: ",result)
+        } else {
+            //update location and rate
+            let payload = {
+                lastRate:TOTAL_CASH / TOTAL_DAI,
+                location:geo.ll || [ 4.5981, -74.0758 ]
+            }
+            let updateResp = await pioneer.UpdateTerminal(payload)
+        }
+        
         //start
-        sub_for_payments()
+        if(!WALLET_FAKE_PAYMENTS){
+            sub_for_payments()
+        }
         if(!ATM_NO_HARDWARE){
             onStartAcceptor()
         }
@@ -549,11 +615,9 @@ module.exports = {
     setSessionLpWithdrawAsym: async function (input:any) {
         return set_session_lp_withdraw_asym(input);
     },
-    //credit session
     credit: async function (input:any) {
         return credit_session(input);
     },
-    //wallet TXIDS_REVIEWED
     payments: async function () {
         return TXIDS_REVIEWED;
     },
@@ -566,17 +630,12 @@ module.exports = {
     sendToAddress: async function (address:string,amount:number) {
         return send_to_address(address,amount);
     },
-    //general
-
-    //bill acceptor
     payout: async function (amount:string) {
         return payout_cash(amount);
     },
-    //fullfill
     fullfill: async function (sessionId:string) {
         return fullfill_order(sessionId);
     },
-    //fullfill
     clear: async function (sessionId:string) {
         clear_session()
         await countBills()
@@ -1264,7 +1323,9 @@ let set_session_buy = async function (input:any) {
         let sessionId = uuid.generate()
         let address = input.address
         CURRENT_SESSION = {sessionId, address, type:"buy"}
-        await eSSP.enable()
+        if(!ATM_NO_HARDWARE){
+            await eSSP.enable()    
+        }
         //@TODO save to mongo
         return CURRENT_SESSION
     } catch (e) {

@@ -20,6 +20,7 @@ import axios from "axios";
 const Home = () => {
   const [showStats, setShowStats] = useState(null);
   const [sessionId, setSessionId] = useState(null);
+  const [lockTabs, setLockTabs] = useState(false);
 
   const startSession = async function () {
     try {
@@ -29,6 +30,8 @@ const Home = () => {
         );
         // eslint-disable-next-line no-console
         console.log("startResp: ", startResp);
+        console.log("startResp: ", startResp.data);
+        console.log("startResp: ", startResp.data.sessionId);
         setSessionId(startResp.data.sessionId);
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -66,25 +69,25 @@ const Home = () => {
           {/*<Session />*/}
         <Tabs size='lg' variant='solid-rounded'>
           <TabList>
-            <Tab>Onramp</Tab>
-            <Tab>Offramp</Tab>
-            <Tab>LP</Tab>
-            <Tab>Status</Tab>
+              <Tab isDisabled={lockTabs}>Onramp</Tab>
+              <Tab isDisabled={lockTabs}>Offramp</Tab>
+              <Tab isDisabled={lockTabs}>LP</Tab>
+              <Tab isDisabled={lockTabs}>Status</Tab>
           </TabList>
 
           <TabPanels>
-            <TabPanel>
-              <Onramp />
-            </TabPanel>
-            <TabPanel>
-              <Offramp />
-            </TabPanel>
-            <TabPanel>
-              <LP />
-            </TabPanel>
-            <TabPanel>
-              <Status />
-            </TabPanel>
+              <TabPanel>
+                  <Onramp setLockTabs={setLockTabs} />
+              </TabPanel>
+              <TabPanel>
+                  <Offramp setLockTabs={setLockTabs} />
+              </TabPanel>
+              <TabPanel>
+                  <LP setLockTabs={setLockTabs} />
+              </TabPanel>
+              <TabPanel>
+                  <Status setLockTabs={setLockTabs} />
+              </TabPanel>
           </TabPanels>
         </Tabs>
       </div>) : (
