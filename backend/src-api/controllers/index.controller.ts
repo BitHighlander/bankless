@@ -401,6 +401,7 @@ export class IndexController extends Controller {
             let input  = {
                 address:body.address
             }
+            log.info("create Buy!")
             let session = await Bankless.setSessionBuy(input)
             return session
         } catch(e){

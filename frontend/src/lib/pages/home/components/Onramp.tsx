@@ -25,12 +25,12 @@ const qr = new EthereumQRPlugin();
 
 const socket = io("ws://127.0.0.1:4000");
 
-const Onramp = () => {
+// @ts-ignore
+const Onramp = ({ setLockTabs }) => {
   const [sliderValue, setSliderValue] = React.useState(5)
   const [showTooltip, setShowTooltip] = React.useState(false)
   const [isConnected, setIsConnected] = useState(socket.connected);
   const [lastPong, setLastPong] = useState(null);
-  const [sessionId, setSessionId] = React.useState(false);
   const [sessionTypeSelected, setSessionTypeSelected] = React.useState(false);
   const [sending, setSending] = React.useState(false);
   const [sent, setSent] = React.useState(false);
@@ -38,7 +38,7 @@ const Onramp = () => {
   const [readyForPayout, setReadyForPayout] = React.useState(false);
   const [txid, setTxid] = React.useState("");
   const [usd, setUsd] = React.useState(0);
-  // const [sessionInit, setSessionInit] = React.useState(false);
+  const [sessionInit, setSessionInit] = React.useState(false);
   const [address, setAddress] = React.useState("");
   const handleInputChangeAddress = (e: any) => setAddress(e.target.value);
 
@@ -115,6 +115,8 @@ const Onramp = () => {
         address,
       };
       console.log("address: ",address)
+
+      console.log("body: ", body);
       let submitResp = await axios.post(
           "http://127.0.0.1:4000/api/v1/create/buy",
           body
@@ -122,8 +124,14 @@ const Onramp = () => {
       submitResp = submitResp.data
       // eslint-disable-next-line no-console
       console.log("submitResp: ", submitResp);
+      setLockTabs(true)
+      // console.log("sessionId: ", submitResp.sessionId);
+      // console.log("setSessionId: ", setSessionId);
+      // setSessionId(submitResp.sessionId);
+      // @ts-ignore
       if(submitResp.type === 'buy'){
-        setSessionId(true);
+        // @ts-ignore
+        setSessionId(submitResp.sessionId);
         setSessionTypeSelected(true)
       }
 

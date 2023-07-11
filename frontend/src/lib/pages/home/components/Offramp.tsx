@@ -8,9 +8,10 @@ import QRCode from 'qrcode.react';
 
 const socket = io("ws://127.0.0.1:4000");
 
-const Buy = () => {
+
+// @ts-ignore
+const Buy = ({ sessionId, setSessionId }) => {
   const [isConnected, setIsConnected] = useState(socket.connected);
-  const [sessionId, setSessionId] = React.useState(false);
   const [availableOnes, setAvailableOnes] = useState(0);
   const [availableFives, setAvailableFives] = useState(0);
   const [availableTens, setAvailableTens] = useState(0);
