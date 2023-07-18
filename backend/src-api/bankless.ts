@@ -141,6 +141,8 @@ TOTAL_CASH = totalCash
 capTable.sync(TOTAL_CASH, TOTAL_DAI)
 capTable.init()
 
+//Global Session id. every time we shut down we audit reserves and create a new session!
+let GLOBAL_SESSION = "unset"
 
 //current session
 let CURRENT_SESSION: {
@@ -493,6 +495,9 @@ let sub_for_payments = async function(){
 let onStart = async function (){
     let tag = TAG + " | onStart | "
     try{
+        //atm started, issue global session
+        GLOBAL_SESSION= "usersession:"+uuid.generate()
+        let sessionStart = new Date().getTime()
         //
         let config = {
             queryKey:QUERY_KEY,
@@ -509,20 +514,23 @@ let onStart = async function (){
         clientEvents.events.on('message', async (event:any) => {
             let tag = TAG + " | events | "
             try{
-                log.info(tag,"event: ",event)
-                log.info(tag,"event: ",event.payload)
+                // log.info(tag,"event: ",event)
+                // log.info(tag,"event: ",event.payload)
                 if(event.payload && event.payload.type == "lpAddAsym"){
-                    let sessionId = await set_session_lp_add_asym(event.payload)
-                    log.info(tag,"sessionId: ",sessionId)
+                    if(!event.payload.address) throw Error("invalid session proposial! required address of LP owner!")
+                    let session = await set_session_lp_add_asym(event.payload)
+                    log.info(tag,"session: ",session)
                     let payload = event.payload
-                    payload.sessionId = sessionId.sessionId
+                    log.info(tag,"payload: ",payload)
+                    payload.sessionId = session.sessionId
                     payload.address = await signer.getAddress(WALLET_MAIN)
                     clientEvents.send('message', payload)
                 }else if(event.type == "lpWithdrawAsym"){
-                    let sessionId = await set_session_lp_withdraw_asym(event.payload)
-                    log.info(tag,"sessionId: ",sessionId)
+                    let session = await set_session_lp_withdraw_asym(event.payload)
+                    log.info(tag,"session: ",session)
                     let payload = event.payload
-                    payload.sessionId = sessionId.sessionId
+                    log.info(tag,"payload: ",payload)
+                    payload.sessionId = session.sessionId
                     payload.address = await signer.getAddress(WALLET_MAIN)
                     clientEvents.send('message', payload)
                 }    
@@ -552,13 +560,17 @@ let onStart = async function (){
         Object.keys(ALL_BILLS).forEach(key => {
             totalCash = totalCash + (parseInt(key) * ALL_BILLS[key]);
         });
+        let rate = (TOTAL_CASH / TOTAL_DAI)
+        log.info(tag,"rate: ",rate)
         //if no info register
         if(!terminalInfo.data){
             let terminal = {
                 terminalId:TERMINAL_NAME+":"+await signer.getAddress(WALLET_MAIN),
                 terminalName:TERMINAL_NAME,
                 tradePair: "USD_DAI",
-                lastRate:TOTAL_CASH / TOTAL_DAI,
+                rate,
+                TOTAL_CASH:TOTAL_CASH,
+                TOTAL_DAI:TOTAL_DAI,
                 pubkey:await signer.getAddress(WALLET_MAIN),
                 fact:"",
                 location:geo.ll || [ 4.5981, -74.0758 ]
@@ -568,7 +580,9 @@ let onStart = async function (){
         } else {
             //update location and rate
             let payload = {
-                lastRate:TOTAL_CASH / TOTAL_DAI,
+                rate:TOTAL_CASH / TOTAL_DAI,
+                TOTAL_CASH,
+                TOTAL_DAI,
                 location:geo.ll || [ 4.5981, -74.0758 ]
             }
             let updateResp = await pioneer.UpdateTerminal(payload)
@@ -581,6 +595,28 @@ let onStart = async function (){
         if(!ATM_NO_HARDWARE){
             onStartAcceptor()
         }
+        //heartbeat
+        setInterval(async () => {
+            try{
+                let uptime = (new Date().getTime() - sessionStart) / 1000 / 60
+                let terminal = {
+                    TOTAL_CASH,
+                    TOTAL_DAI,
+                    rate,
+                    terminalId:TERMINAL_NAME+":"+await signer.getAddress(WALLET_MAIN),
+                    terminalName:TERMINAL_NAME,
+                    location:geo.ll || [ 4.5981, -74.0758 ],
+                    sessionId: GLOBAL_SESSION,
+                    uptime
+                }
+                let updateResp = await pioneer.UpdateTerminal(terminal)
+                console.log(tag,"heartbeat: ",updateResp)
+                console.log("** RATE: "+rate+"   .... terminal uptime: ",parseInt(uptime.toString())+" (minutes)")
+                
+            }catch(e){
+                log.error(tag,"heartbeat error: ",e)
+            }
+        },30 * 1000)
     }catch(e){
         log.error(e)
     }
@@ -1304,7 +1340,7 @@ let start_session = async function (input:any) {
     try {
         if(CURRENT_SESSION && CURRENT_SESSION.sessionId) throw Error("already in session!")
         //if buy intake address
-        let sessionId = uuid.generate()
+        let sessionId = "usersession:"+uuid.generate()
         let sessionStart = new Date().getTime()
         CURRENT_SESSION = {sessionId, start: sessionStart }
         //@TODO save to mongo
