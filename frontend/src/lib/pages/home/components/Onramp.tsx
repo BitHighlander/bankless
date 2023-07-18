@@ -55,7 +55,9 @@ const Onramp = ({ setLockTabs }) => {
       // console.log("paymentParams: ",paymentParams)
       // const scannedAddress = paymentParams.to;
       // console.log("scannedAddress: ",scannedAddress)
-      setAddress(data.text);
+      const ethAddressRegex = /0x[0-9a-fA-F]{40}/; // Regular expression to match Ethereum address pattern
+      const extractedAddress = data.text.match(ethAddressRegex)?.[0] || ""; // Extract the Ethereum address from the string
+      setAddress(extractedAddress);
     }
   };
 
