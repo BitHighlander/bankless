@@ -23,6 +23,7 @@ const Pioneer = require("@pioneer-platform/pioneer-client").default;
 import {getIPAddress} from "./utils"
 let Events = require("@pioneer-platform/pioneer-events")
 let capTable = require('./capTable')
+const fs = require('fs');
 
 let wait = require('wait-promise');
 let sleep = wait.sleep;
@@ -101,10 +102,14 @@ let balanceUSD = 0
 let balanceDAI = 0
 let currentSession:any //@TODO session must use session Types
 
+
 const Web3 = require("web3")
 let service = "https://mainnet.infura.io/v3/fb05c87983c4431baafd4600fd33de7e"
 let WEB3 = new Web3(new Web3.providers.HttpProvider(service))
 let DAI_CONTRACT = "0x6b175474e89094c44da98b954eedeac495271d0f"
+
+//pioneer
+let pioneer:any
 
 //bill acceptor
 let eSSP:any
@@ -551,7 +556,7 @@ let onStart = async function (){
             queryKey:QUERY_KEY,
             spec:URL_PIONEER_SPEC
         };
-        let pioneer = new Pioneer(configPioneer.spec, configPioneer);
+        pioneer = new Pioneer(configPioneer.spec, configPioneer);
         pioneer = await pioneer.init();
         let terminalInfo = await pioneer.TerminalPrivate({terminalName:TERMINAL_NAME})
         log.info(tag,"terminalInfo: ",terminalInfo.data)
@@ -563,12 +568,15 @@ let onStart = async function (){
         let rate = (TOTAL_CASH / TOTAL_DAI)
         log.info(tag,"rate: ",rate)
         //if no info register
-        if(!terminalInfo.data){
+        let captable = await capTable.get()
+        if(!terminalInfo.data.terminalInfo){
             let terminal = {
                 terminalId:TERMINAL_NAME+":"+await signer.getAddress(WALLET_MAIN),
                 terminalName:TERMINAL_NAME,
                 tradePair: "USD_DAI",
                 rate,
+                captable,
+                sessionId: GLOBAL_SESSION,
                 TOTAL_CASH:TOTAL_CASH,
                 TOTAL_DAI:TOTAL_DAI,
                 pubkey:await signer.getAddress(WALLET_MAIN),
@@ -579,10 +587,15 @@ let onStart = async function (){
             log.info(tag,"result: ",result)
         } else {
             //update location and rate
+            log.info("captable: ",captable)
             let payload = {
+                sessionId: GLOBAL_SESSION,
+                terminalName:TERMINAL_NAME,
+                pubkey:await signer.getAddress(WALLET_MAIN),
                 rate:TOTAL_CASH / TOTAL_DAI,
                 TOTAL_CASH,
                 TOTAL_DAI,
+                captable,
                 location:geo.ll || [ 4.5981, -74.0758 ]
             }
             let updateResp = await pioneer.UpdateTerminal(payload)
@@ -599,18 +612,21 @@ let onStart = async function (){
         setInterval(async () => {
             try{
                 let uptime = (new Date().getTime() - sessionStart) / 1000 / 60
+                let captable = await capTable.get()
                 let terminal = {
                     TOTAL_CASH,
                     TOTAL_DAI,
                     rate,
+                    pubkey:await signer.getAddress(WALLET_MAIN),
                     terminalId:TERMINAL_NAME+":"+await signer.getAddress(WALLET_MAIN),
                     terminalName:TERMINAL_NAME,
                     location:geo.ll || [ 4.5981, -74.0758 ],
                     sessionId: GLOBAL_SESSION,
+                    captable,
                     uptime
                 }
                 let updateResp = await pioneer.UpdateTerminal(terminal)
-                console.log(tag,"heartbeat: ",updateResp)
+                //console.log(tag,"heartbeat: ",updateResp)
                 console.log("** RATE: "+rate+"   .... terminal uptime: ",parseInt(uptime.toString())+" (minutes)")
                 
             }catch(e){
@@ -831,6 +847,15 @@ let fullfill_order = async function (sessionId:string) {
                 await countBills()
             }
             CURRENT_SESSION.txid = txid
+            pioneer.PushEvent({
+                type:"sessionFullFilledBuy",
+                event:"session dispensed DAI fullfilled txid: "+txid+" | amountOut: "+amountOut,
+                terminalName:TERMINAL_NAME,
+                sessionId:CURRENT_SESSION.sessionId,
+                rate: TOTAL_CASH / TOTAL_DAI,
+                TOTAL_CASH,
+                TOTAL_DAI
+            })
             clear_session()
             return txid
         }
@@ -903,6 +928,15 @@ let fullfill_order = async function (sessionId:string) {
             });
             TOTAL_CASH = totalCash
             capTable.sync(TOTAL_CASH,TOTAL_DAI)
+            pioneer.PushEvent({
+                type:"sessionFullFilledSell",
+                event:"session dispensed cash fullfilled txid: "+txid+" | amountOut: "+amountOut,
+                terminalName:TERMINAL_NAME,
+                sessionId:CURRENT_SESSION.sessionId,
+                rate: TOTAL_CASH / TOTAL_DAI,
+                TOTAL_CASH,
+                TOTAL_DAI
+            })
             return txid
         }
         if(CURRENT_SESSION.type === 'lpAdd' || CURRENT_SESSION.type === 'lpAddAsym'){
@@ -914,6 +948,15 @@ let fullfill_order = async function (sessionId:string) {
             let resultToken = await capTable.add(CURRENT_SESSION.address,CURRENT_SESSION.SESSION_FUNDING_USD,CURRENT_SESSION.SESSION_FUNDING_DAI)
             // let lpTokens = await calculate_lp_tokens(CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0,CURRENT_SESSION.CURRENT_SESSION.SESSION_FUNDING_USD ?? 0)
             log.info("resultToken: ",resultToken)
+            pioneer.PushEvent({
+                type:"sessionFullFilledLpAdd",
+                event:"session credited ownership LP tokens: : "+resultToken+" | owner: "+CURRENT_SESSION.address,
+                sessionId:CURRENT_SESSION.sessionId,
+                terminalName:TERMINAL_NAME,
+                rate: TOTAL_CASH / TOTAL_DAI,
+                TOTAL_CASH,
+                TOTAL_DAI
+            })
             //credit owner
             return "LP:ADD:TXID:PLACEHOLDER"
         }
@@ -1003,7 +1046,15 @@ let fullfill_order = async function (sessionId:string) {
             log.info(tag,"TOTAL_CASH: ",TOTAL_CASH)
             log.info(tag,"TOTAL_DAI: ",TOTAL_DAI)
             capTable.sync(TOTAL_CASH,TOTAL_DAI)
-
+            pioneer.PushEvent({
+                type:"sessionFullFilledLpWithdraw",
+                event:"session paid out LP owner: : "+resultRemoval.dispenseUSD+" | owner: "+CURRENT_SESSION.address,
+                sessionId:CURRENT_SESSION.sessionId,
+                terminalName:TERMINAL_NAME,
+                rate: TOTAL_CASH / TOTAL_DAI,
+                TOTAL_CASH,
+                TOTAL_DAI
+            })
             return "LP:REMOVE:USD"+resultRemoval.dispenseUSD+":DAI"+resultRemoval.dispenseDAI+":TXID:PLACEHOLDER"
         }
         // if(CURRENT_SESSION.type === 'lpWithdrawAsym'){
@@ -1031,6 +1082,16 @@ const credit_session = async function (input) {
         if (!input.sessionId) throw Error("No sessionId!");
         log.info(tag, "input: ", input);
         log.info(tag, "CURRENT_SESSION: ", CURRENT_SESSION);
+        pioneer.PushEvent({
+            type:"creditSessionUSD",
+            terminalName:TERMINAL_NAME,
+            event:"session credited "+parseInt(input.amount)+" "+input.asset,
+            sessionId:input.sessionId,
+            rate: TOTAL_CASH / TOTAL_DAI,
+            TOTAL_CASH,
+            TOTAL_DAI
+        })
+
         if (input.asset === 'USD') {
             CURRENT_SESSION.SESSION_FUNDING_USD = (CURRENT_SESSION.SESSION_FUNDING_USD ?? 0) + parseInt(input.amount);
             if (WALLET_FAKE_PAYMENTS) {
@@ -1362,6 +1423,17 @@ let set_session_buy = async function (input:any) {
         if(!ATM_NO_HARDWARE){
             await eSSP.enable()    
         }
+        //push event
+        pioneer.PushEvent({
+            type:"sessionCreateBuy",
+            event:"user ("+address+") created a buy session sessionId: "+sessionId,
+            address,
+            sessionId,
+            terminalName:TERMINAL_NAME,
+            rate: TOTAL_CASH / TOTAL_DAI,
+            TOTAL_CASH,
+            TOTAL_DAI
+        })
         //@TODO save to mongo
         return CURRENT_SESSION
     } catch (e) {
@@ -1395,6 +1467,17 @@ let set_session_sell = async function (input) {
             type:"sell",
             address
         }
+        pioneer.PushEvent({
+            type:"sessionCreateSell",
+            event:"user created a sell session sessionId: "+sessionId,
+            address,
+            sessionId,
+            terminalName:TERMINAL_NAME,
+            rate: TOTAL_CASH / TOTAL_DAI,
+            TOTAL_CASH,
+            TOTAL_DAI
+        })
+
         log.info("CURRENT_SESSION: ",CURRENT_SESSION)
         return CURRENT_SESSION
     } catch (e) {
@@ -1415,6 +1498,16 @@ let set_session_lp_add = async function (input) {
             address,
             type:"lpAdd"
         }
+        pioneer.PushEvent({
+            type:"sessionCreateLpAdd",
+            event:"user (" +address+ ") created a LP add session sessionId: "+sessionId,
+            address,
+            sessionId,
+            terminalName:TERMINAL_NAME,
+            rate: TOTAL_CASH / TOTAL_DAI,
+            TOTAL_CASH,
+            TOTAL_DAI
+        })
         log.info(tag,"CURRENT_SESSION: ",CURRENT_SESSION)
         return CURRENT_SESSION
     } catch (e) {
@@ -1430,6 +1523,16 @@ let set_session_lp_add_asym = async function (input) {
         let sessionId = uuid.generate()
         let address = input.address
         CURRENT_SESSION = {sessionId, address, type:"lpAddAsym"}
+        pioneer.PushEvent({
+            type:"sessionCreateLpAddAsym",
+            event:"user (" +address+ ") created a LP add ASYM session sessionId: "+sessionId,
+            address,
+            sessionId,
+            terminalName:TERMINAL_NAME,
+            rate: TOTAL_CASH / TOTAL_DAI,
+            TOTAL_CASH,
+            TOTAL_DAI
+        })
         return CURRENT_SESSION
     } catch (e) {
         console.error(tag, "e: ", e)
@@ -1451,6 +1554,16 @@ let set_session_lp_withdraw = async function (input) {
             amountOut,
             type:"lpWithdraw"
         }
+        pioneer.PushEvent({
+            type:"sessionCreateLpWithdraw",
+            event:"user (" +address+ ") created a LP withdraw session sessionId: "+sessionId,
+            address,
+            sessionId,
+            terminalName:TERMINAL_NAME,
+            rate: TOTAL_CASH / TOTAL_DAI,
+            TOTAL_CASH,
+            TOTAL_DAI
+        })
         log.info(tag,"CURRENT_SESSION: ",CURRENT_SESSION)
         return CURRENT_SESSION
     } catch (e) {
@@ -1466,6 +1579,16 @@ let set_session_lp_withdraw_asym = async function (input) {
         let sessionId = uuid.generate()
         let address = input.address
         CURRENT_SESSION = {sessionId, address}
+        pioneer.PushEvent({
+            type:"sessionCreateLpWithdraw",
+            event:"user created a LP withdraw ASYM session sessionId: "+sessionId,
+            address,
+            sessionId,
+            terminalName:TERMINAL_NAME,
+            rate: TOTAL_CASH / TOTAL_DAI,
+            TOTAL_CASH,
+            TOTAL_DAI
+        })
         return currentSession
     } catch (e) {
         console.error(tag, "e: ", e)

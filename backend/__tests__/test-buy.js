@@ -25,41 +25,41 @@ let run_test = async () => {
         assert(respCreate.type === "buy");
         assert(respCreate.address === bodyCreate.address);
 
-        // //deposit dollars
-        // //hit fake endpoint
-        // const bodyFund = {
-        //     sessionId:respCreate.sessionId,
-        //     amount:"10",
-        //     asset:"USD"
-        // };
-        // console.log("bodyFund: ",bodyFund)
-        // let respFund = await axios.post(
-        //     "http://127.0.0.1:4000/api/v1/hack/fund",
-        //     bodyFund
-        // );
-        // respFund = respFund.data
-        // // eslint-disable-next-line no-console
-        // console.log("respFund: ", respFund);
-        //
-        // //get last session
-        // let status = await axios.get(
-        //     "http://localhost:4000/api/v1/" + "status"
-        // );
-        // status = status.data
-        // console.log("status: ",status)
-        //
-        // //fullfill
-        // const bodyFullfill = {
-        //     sessionId:status.session.sessionId
-        // };
-        // console.log("bodyFullfill: ",bodyFullfill)
-        // let respFullfill = await axios.post(
-        //     "http://127.0.0.1:4000/api/v1/fullfill",
-        //     bodyFullfill
-        // );
-        // respFullfill = respFullfill.data
-        // // eslint-disable-next-line no-console
-        // console.log("respFullfill: ", respFullfill);
+        //deposit dollars
+        //hit fake endpoint
+        const bodyFund = {
+            sessionId:respCreate.sessionId,
+            amount:"10",
+            asset:"USD"
+        };
+        console.log("bodyFund: ",bodyFund)
+        let respFund = await axios.post(
+            "http://127.0.0.1:4000/api/v1/hack/fund",
+            bodyFund
+        );
+        respFund = respFund.data
+        // eslint-disable-next-line no-console
+        console.log("respFund: ", respFund);
+
+        //get last session
+        let status = await axios.get(
+            "http://localhost:4000/api/v1/" + "status"
+        );
+        status = status.data
+        console.log("status: ",status)
+
+        //fullfill
+        const bodyFullfill = {
+            sessionId:status.session.sessionId
+        };
+        console.log("bodyFullfill: ",bodyFullfill)
+        let respFullfill = await axios.post(
+            "http://127.0.0.1:4000/api/v1/fullfill",
+            bodyFullfill
+        );
+        respFullfill = respFullfill.data
+        // eslint-disable-next-line no-console
+        console.log("respFullfill: ", respFullfill);
 
 
     }catch(e){

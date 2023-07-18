@@ -81,7 +81,8 @@ let init_cap = function () {
         let ownershipPercentage = 1
         CAP_TABLE.push({
             address: ATM_OWNER,
-            lpTokens: totalLPTokens
+            lpTokens: totalLPTokens,
+            percentage: 100
         });
         log.info("CAP_TABLE: ", CAP_TABLE)
     } catch (e) {
