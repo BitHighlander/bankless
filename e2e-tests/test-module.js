@@ -25,8 +25,8 @@ const runTest = async () => {
         console.log("status: ",status.data)
         console.log("cap: ",status.data.cap)
         //total USD in system
-        console.log("balanceUSD: ",status.data.balanceUSD)
-        console.log("balanceDAI: ",status.data.balanceDAI)
+        // console.log("balanceUSD: ",status.data.balanceUSD)
+        // console.log("balanceDAI: ",status.data.balanceDAI)
         //TOTAL VALUE
         console.log("totalValue: ",status.data.balanceUSD + status.data.balanceDAI)
         //total crypto in system
@@ -39,6 +39,10 @@ const runTest = async () => {
         //trade 100 crypto to cash
         
         //withdraw LP all
+        
+        
+        //get report from remote
+        //audit report
         
         
         

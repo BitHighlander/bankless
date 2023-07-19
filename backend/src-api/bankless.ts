@@ -565,7 +565,14 @@ let onStart = async function (){
         Object.keys(ALL_BILLS).forEach(key => {
             totalCash = totalCash + (parseInt(key) * ALL_BILLS[key]);
         });
-        let rate = (TOTAL_CASH / TOTAL_DAI)
+        log.info(tag,"TOTAL_CASH: ",TOTAL_CASH)
+        log.info(tag,"TOTAL_DAI: ",TOTAL_DAI)
+        let rate
+        if(TOTAL_CASH == 0 || TOTAL_DAI == 0){
+            rate = "0"
+        } else {
+            rate = (TOTAL_CASH / TOTAL_DAI)    
+        }
         log.info(tag,"rate: ",rate)
         //if no info register
         let captable = await capTable.get()
@@ -577,8 +584,8 @@ let onStart = async function (){
                 rate,
                 captable,
                 sessionId: GLOBAL_SESSION,
-                TOTAL_CASH:TOTAL_CASH,
-                TOTAL_DAI:TOTAL_DAI,
+                TOTAL_CASH:TOTAL_CASH.toString(),
+                TOTAL_DAI:TOTAL_DAI.toString(),
                 pubkey:await signer.getAddress(WALLET_MAIN),
                 fact:"",
                 location:geo.ll || [ 4.5981, -74.0758 ]
@@ -588,13 +595,14 @@ let onStart = async function (){
         } else {
             //update location and rate
             log.info("captable: ",captable)
+            if(!rate) throw Error("rate is required!")
             let payload = {
                 sessionId: GLOBAL_SESSION,
                 terminalName:TERMINAL_NAME,
                 pubkey:await signer.getAddress(WALLET_MAIN),
-                rate:TOTAL_CASH / TOTAL_DAI,
-                TOTAL_CASH,
-                TOTAL_DAI,
+                rate,
+                TOTAL_CASH:TOTAL_CASH.toString(),
+                TOTAL_DAI:TOTAL_DAI.toString(),
                 captable,
                 location:geo.ll || [ 4.5981, -74.0758 ]
             }
@@ -613,9 +621,15 @@ let onStart = async function (){
             try{
                 let uptime = (new Date().getTime() - sessionStart) / 1000 / 60
                 let captable = await capTable.get()
+                let totalCash = 0;
+                Object.keys(ALL_BILLS).forEach(key => {
+                    totalCash = totalCash + (parseInt(key) * ALL_BILLS[key]);
+                });
+                let rate = (TOTAL_CASH / TOTAL_DAI)
+                if(!rate) throw Error("rate is required!")
                 let terminal = {
-                    TOTAL_CASH,
-                    TOTAL_DAI,
+                    TOTAL_CASH:totalCash.toString(),
+                    TOTAL_DAI:TOTAL_DAI.toString(),
                     rate,
                     pubkey:await signer.getAddress(WALLET_MAIN),
                     terminalId:TERMINAL_NAME+":"+await signer.getAddress(WALLET_MAIN),
