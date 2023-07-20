@@ -41,19 +41,19 @@ let QUERY_KEY = process.env['QUERY_KEY']
 if(!QUERY_KEY) throw Error("QUERY_KEY is required!")
 
 let NO_BROADCAST = process.env['WALLET_NO_BROADCAST']
-if(NO_BROADCAST) log.info(" NERFED! wallet will not send crypto!")
+if(NO_BROADCAST) log.debug(" NERFED! wallet will not send crypto!")
 
 let WALLET_FAKE_PAYMENTS = process.env['WALLET_FAKE_PAYMENTS']
-if(WALLET_FAKE_PAYMENTS) log.info(" WALLET_FAKE_PAYMENTS: will NOT pay crypto!")
+if(WALLET_FAKE_PAYMENTS) log.debug(" WALLET_FAKE_PAYMENTS: will NOT pay crypto!")
 
 let WALLET_FAKE_BALANCES = process.env['WALLET_FAKE_BALANCES']
-if(WALLET_FAKE_BALANCES) log.info(" WALLET_FAKE_BALANCES: will FAKE BALANCES!")
+if(WALLET_FAKE_BALANCES) log.debug(" WALLET_FAKE_BALANCES: will FAKE BALANCES!")
 
 let ATM_NO_HARDWARE = process.env['ATM_NO_HARDWARE']
-if(ATM_NO_HARDWARE) log.info(" ATM_NO_HARDWARE: not attempting hardwware!")
+if(ATM_NO_HARDWARE) log.debug(" ATM_NO_HARDWARE: not attempting hardwware!")
 
 let USB_CONNECTION = process.env['USB_CONNECTION']
-if(!USB_CONNECTION) log.info("USB_CONNECTION: REQUIRED!")
+if(!USB_CONNECTION) log.debug("USB_CONNECTION: REQUIRED!")
 
 // order types
 enum OrderTypes {
@@ -177,9 +177,9 @@ function getQuoteForSellProducingCashValue(usdOut: number): number {
 }
 
 function getQuoteForSellOfExactCryptoValue(daiIn: number): number {
-    console.log('| getQuoteForSellOfExactCryptoValue | daiIn: ', daiIn)
-    console.log('| getQuoteForSellOfExactCryptoValue | TOTAL_CASH: ', TOTAL_CASH)
-    console.log('| getQuoteForSellOfExactCryptoValue | TOTAL_DAI: ', TOTAL_DAI)
+    //console.log('| getQuoteForSellOfExactCryptoValue | daiIn: ', daiIn)
+    //console.log('| getQuoteForSellOfExactCryptoValue | TOTAL_CASH: ', TOTAL_CASH)
+    //console.log('| getQuoteForSellOfExactCryptoValue | TOTAL_DAI: ', TOTAL_DAI)
     const quoteRate = TOTAL_CASH / (TOTAL_DAI + daiIn)
 	return daiIn * quoteRate
 }
@@ -200,7 +200,7 @@ function getQuoteForRemoveLiquidity(usdOut: number): number {
 
 let onStartAcceptor = async function(){
     try{
-        log.info("onStartAcceptor")
+        log.debug("onStartAcceptor")
         const channels = []
 
         const serialPortConfig = {
@@ -235,16 +235,16 @@ let onStartAcceptor = async function(){
 
 
         eSSP.on('OPEN', async () => {
-            console.log('Port opened!')
+            //console.log('Port opened!')
         })
 
         eSSP.on('CLOSE', async () => {
-            console.log('Port closed!')
+            //console.log('Port closed!')
         })
 
         eSSP.on('POLL', (x) => {
             if (x === "TIMEOUT") {
-                console.log("bill acceptor stopped responding, exiting with error")
+                //console.log("bill acceptor stopped responding, exiting with error")
                 process.exit(1)
             }
         })
@@ -252,7 +252,7 @@ let onStartAcceptor = async function(){
         eSSP.on('READ_NOTE', async result => {
             if (result.channel === 0) return
             const channel = channels[result.channel - 1]
-            console.log('READ_NOTE', channel)
+            //console.log('READ_NOTE', channel)
 
             // if (channel.value === 500) {
             //   eSSP.command('REJECT_BANKNOTE')
@@ -260,17 +260,17 @@ let onStartAcceptor = async function(){
         })
 
         eSSP.on('NOTE_REJECTED', async result => {
-            console.log('NOTE_REJECTED', result)
-            console.log(await eSSP.command('LAST_REJECT_CODE'))
+            //console.log('NOTE_REJECTED', result)
+            //console.log(await eSSP.command('LAST_REJECT_CODE'))
         })
 
         eSSP.on('CREDIT_NOTE', async result => {
             if (result.channel === 0) return
             const channel = channels[result.channel - 1]
-            console.log('CREDIT_NOTE', channel)
+            //console.log('CREDIT_NOTE', channel)
             publisher.publish("payments",JSON.stringify({amount:channel.value/100,asset:"USD"}))
             let amount = (parseInt(channel.value)/100).toString()
-            console.log('credit amount: ', amount)
+            //console.log('credit amount: ', amount)
             let input = {
                 amount: amount,
                 asset: "USD",
@@ -279,16 +279,16 @@ let onStartAcceptor = async function(){
             if(CURRENT_SESSION.sessionId)credit_session(input)
         })
         let system = os.platform()
-        log.info("system: ",system)
+        log.debug("system: ",system)
         await eSSP.open(USB_CONNECTION, serialPortConfig)
         await eSSP.command('SYNC')
         await eSSP.command('HOST_PROTOCOL_VERSION', { version: 6 })
-        console.log('disabling payin')
+        //console.log('disabling payin')
         await eSSP.disable()
 
-        console.log('encryption init')
+        //console.log('encryption init')
         await eSSP.initEncryption()
-        console.log('SERIAL NUMBER:', (await eSSP.command('GET_SERIAL_NUMBER'))?.info?.serial_number)
+        //console.log('SERIAL NUMBER:', (await eSSP.command('GET_SERIAL_NUMBER'))?.info?.serial_number)
 
         const setup_result = await eSSP.command('SETUP_REQUEST')
         for (let i = 0; i < setup_result.info.channel_value.length; i++) {
@@ -298,12 +298,12 @@ let onStartAcceptor = async function(){
             }
         }
 
-        console.log('set channel inhibits')
+        //console.log('set channel inhibits')
         await eSSP.command('SET_CHANNEL_INHIBITS', {
             channels: Array(channels.length).fill(1),
         })
 
-        console.log('resetting routes')
+        //console.log('resetting routes')
         const payoutDenoms = [100, 500, 1000, 2000, 5000, 10000]
         for (let i = 0; i < channels.length; i++) {
             const channel = channels[i]
@@ -320,27 +320,27 @@ let onStartAcceptor = async function(){
             }
         }
 
-        console.log('checking routes')
+        //console.log('checking routes')
         for (const channel of channels) {
-            console.log(channel, (await eSSP.command('GET_DENOMINATION_ROUTE', {value: channel.value, country_code: channel.country_code}))?.info)
+            //console.log(channel, (await eSSP.command('GET_DENOMINATION_ROUTE', {value: channel.value, country_code: channel.country_code}))?.info)
         }
 
-        console.log('enable refill mode')
+        //console.log('enable refill mode')
         await eSSP.command('SET_REFILL_MODE', { mode: 'on' })
 
-        // console.log('enable payin')
+        // //console.log('enable payin')
         // await eSSP.enable()
 
-        console.log('enable payout')
+        //console.log('enable payout')
         await eSSP.command('ENABLE_PAYOUT_DEVICE', {REQUIRE_FULL_STARTUP: false, GIVE_VALUE_ON_STORED: true})
 
-        console.log('get levels')
+        //console.log('get levels')
         if(!ATM_NO_HARDWARE){
             const levels = (await eSSP.command('GET_ALL_LEVELS'))?.info?.counter;
-            console.log(levels)
+            //console.log(levels)
             for(let i = 0; i < levels.length; i++){
                 let level = levels[i]
-                console.log('level: ', level)
+                //console.log('level: ', level)
                 if(level.value == 100){
                     ALL_BILLS["1"] = level.denomination_level
                 }
@@ -373,14 +373,14 @@ let onStartAcceptor = async function(){
 
 let countBills = async function(){
     try{
-        console.log()
-        console.log('get levels')
+        //console.log()
+        //console.log('get levels')
         const levels = (await eSSP.command('GET_ALL_LEVELS'))?.info?.counter;
-        console.log(levels)
+        //console.log(levels)
 
         for(let i = 0; i < levels.length; i++){
             let level = levels[i]
-            console.log('level: ', level)
+            //console.log('level: ', level)
             if(level.value == 100){
                 ALL_BILLS["1"] = level.denomination_level
             }
@@ -409,13 +409,13 @@ let sub_for_payments = async function(){
     let tag = " | sub_for_payments | "
     try{
         let address = await signer.getAddress(WALLET_MAIN)
-        log.info(tag,"address: ",address)
+        log.debug(tag,"address: ",address)
 
         //let first start
         let firstStart = true
         let isScanning = true
         while(isScanning){
-            log.info(tag,"scanning...")
+            log.debug(tag,"scanning...")
             let url = "https://indexer.ethereum.shapeshift.com"+"/api/v2/address/"+address+"?details=all"
             let body = {
                 method: 'GET',
@@ -431,7 +431,7 @@ let sub_for_payments = async function(){
                 let txids = resp.data.txids
                 for(let i = 0; i < txids.length; i++){
                     let txid = txids[i]
-                    //log.info("txid: ",txid)
+                    //log.debug("txid: ",txid)
                     if(CURRENT_SESSION && !TXIDS_REVIEWED.some(e => e.txid === txid)){
                         let url = "https://indexer.ethereum.shapeshift.com"+"/api/v2/tx/"+txid
                         let body = {
@@ -450,8 +450,8 @@ let sub_for_payments = async function(){
                                 CURRENT_SESSION.SESSION_FUNDING_DAI = (CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0) + paymentAmountDai
                             }
                         }
-                        log.info("paymentAmountDai: ",paymentAmountDai)
-                        log.info("SESSION_FUNDING_DAI: ",CURRENT_SESSION.SESSION_FUNDING_DAI)
+                        log.debug("paymentAmountDai: ",paymentAmountDai)
+                        log.debug("SESSION_FUNDING_DAI: ",CURRENT_SESSION.SESSION_FUNDING_DAI)
                         let payment = {
                             txid:txids[i],
                             asset:"DAI",
@@ -465,8 +465,8 @@ let sub_for_payments = async function(){
                         publisher.publish("payments",JSON.stringify(payment))
                         fullfill_order(CURRENT_SESSION.sessionId)
                     } else if(!TXIDS_REVIEWED.some(e => e.txid === txid) && !firstStart){
-                        log.info(tag,"payment outside session!")
-                        log.info(tag,"payment: !")
+                        log.debug(tag,"payment outside session!")
+                        log.debug(tag,"payment: !")
                         let payment = {
                             txid:txids[i],
                             session:"none",
@@ -487,7 +487,7 @@ let sub_for_payments = async function(){
                 firstStart = false
                 await sleep(3000)
             }catch(e){
-                console.log("unable to scan, trying again")
+                //console.log("unable to scan, trying again")
                 await sleep(3000)
             }
 
@@ -519,22 +519,22 @@ let onStart = async function (){
         clientEvents.events.on('message', async (event:any) => {
             let tag = TAG + " | events | "
             try{
-                // log.info(tag,"event: ",event)
-                // log.info(tag,"event: ",event.payload)
+                // log.debug(tag,"event: ",event)
+                // log.debug(tag,"event: ",event.payload)
                 if(event.payload && event.payload.type == "lpAddAsym"){
                     if(!event.payload.address) throw Error("invalid session proposial! required address of LP owner!")
                     let session = await set_session_lp_add_asym(event.payload)
-                    log.info(tag,"session: ",session)
+                    log.debug(tag,"session: ",session)
                     let payload = event.payload
-                    log.info(tag,"payload: ",payload)
+                    log.debug(tag,"payload: ",payload)
                     payload.sessionId = session.sessionId
                     payload.address = await signer.getAddress(WALLET_MAIN)
                     clientEvents.send('message', payload)
                 }else if(event.type == "lpWithdrawAsym"){
                     let session = await set_session_lp_withdraw_asym(event.payload)
-                    log.info(tag,"session: ",session)
+                    log.debug(tag,"session: ",session)
                     let payload = event.payload
-                    log.info(tag,"payload: ",payload)
+                    log.debug(tag,"payload: ",payload)
                     payload.sessionId = session.sessionId
                     payload.address = await signer.getAddress(WALLET_MAIN)
                     clientEvents.send('message', payload)
@@ -546,10 +546,10 @@ let onStart = async function (){
         
         //getIPAddress
         let ip = await getIPAddress()
-        log.info("ip: ",ip)
+        log.debug("ip: ",ip)
         await geoip2.reloadDataSync();
         var geo = geoip2.lookup(ip);
-        log.info("geo: ",geo)
+        log.debug("geo: ",geo)
 
         //get terminal info
         const configPioneer = {
@@ -559,21 +559,21 @@ let onStart = async function (){
         pioneer = new Pioneer(configPioneer.spec, configPioneer);
         pioneer = await pioneer.init();
         let terminalInfo = await pioneer.TerminalPrivate({terminalName:TERMINAL_NAME})
-        log.info(tag,"terminalInfo: ",terminalInfo.data)
+        log.debug(tag,"terminalInfo: ",terminalInfo.data)
         //check total cash
         let totalCash = 0;
         Object.keys(ALL_BILLS).forEach(key => {
             totalCash = totalCash + (parseInt(key) * ALL_BILLS[key]);
         });
-        log.info(tag,"TOTAL_CASH: ",TOTAL_CASH)
-        log.info(tag,"TOTAL_DAI: ",TOTAL_DAI)
+        log.debug(tag,"TOTAL_CASH: ",TOTAL_CASH)
+        log.debug(tag,"TOTAL_DAI: ",TOTAL_DAI)
         let rate
         if(TOTAL_CASH == 0 || TOTAL_DAI == 0){
             rate = "0"
         } else {
             rate = (TOTAL_CASH / TOTAL_DAI)    
         }
-        log.info(tag,"rate: ",rate)
+        log.debug(tag,"rate: ",rate)
         //if no info register
         let captable = await capTable.get()
         if(!terminalInfo.data.terminalInfo){
@@ -591,10 +591,10 @@ let onStart = async function (){
                 location:geo.ll || [ 4.5981, -74.0758 ]
             }
             let result = await pioneer.SubmitTerminal(terminal)
-            log.info(tag,"result: ",result)
+            log.debug(tag,"result: ",result)
         } else {
             //update location and rate
-            log.info("captable: ",captable)
+            log.debug("captable: ",captable)
             if(!rate) throw Error("rate is required!")
             let payload = {
                 sessionId: GLOBAL_SESSION,
@@ -642,8 +642,8 @@ let onStart = async function (){
                     uptime
                 }
                 let updateResp = await pioneer.UpdateTerminal(terminal)
-                //console.log(tag,"heartbeat: ",updateResp)
-                console.log("** RATE: "+rate+"   .... terminal uptime: ",parseInt(uptime.toString())+" (minutes)")
+                ////console.log(tag,"heartbeat: ",updateResp)
+                //console.log("** RATE: "+rate+"   .... terminal uptime: ",parseInt(uptime.toString())+" (minutes)")
                 
             }catch(e){
                 log.error(tag,"heartbeat error: ",e)
@@ -747,7 +747,7 @@ let onStartSession = async function(){
     let tag = TAG + " | onStartSession | "
     try{
         let timeStart = new Date().getTime()
-        log.info(tag,"timeStart: ",timeStart)
+        log.debug(tag,"timeStart: ",timeStart)
         //if(!ACCEPTOR_ONLINE) throw Error("Acceptor not online!")
 
         //get balance of bill acceptor
@@ -756,7 +756,7 @@ let onStartSession = async function(){
             totalCash = totalCash + (parseInt(key) * ALL_BILLS[key]);
         });
         TOTAL_CASH = totalCash
-        log.info(totalCash)
+        log.debug(totalCash)
 
         //get balance of wallet
         let minABI = [
@@ -778,12 +778,12 @@ let onStartSession = async function(){
             }
         ];
         let address = await signer.getAddress(WALLET_MAIN)
-        console.log("address: ",address)
+        //console.log("address: ",address)
         const newContract = new WEB3.eth.Contract(minABI, DAI_CONTRACT);
         const decimals = await newContract.methods.decimals().call();
-        console.log("decimals: ",decimals)
+        //console.log("decimals: ",decimals)
         const balanceBN = await newContract.methods.balanceOf(address).call()
-        console.log("input: balanceBN: ",balanceBN)
+        //console.log("input: balanceBN: ",balanceBN)
         // @ts-ignore
         let tokenBalance = parseInt(balanceBN/Math.pow(10, decimals))
         if(!WALLET_FAKE_BALANCES){
@@ -798,8 +798,8 @@ let onStartSession = async function(){
         //@TODO if diff record it
 
         //start session
-        log.info(tag,"TOTAL_CASH: ",TOTAL_CASH)
-        log.info(tag,"TOTAL_DAI: ",TOTAL_DAI)
+        log.debug(tag,"TOTAL_CASH: ",TOTAL_CASH)
+        log.debug(tag,"TOTAL_DAI: ",TOTAL_DAI)
 
         //get LP owners
 
@@ -850,12 +850,12 @@ function debitBills(amountOut) {
 let fullfill_order = async function (sessionId:string) {
     let tag = TAG + " | fullfill_order | "
     try {
-        log.info("CURRENT_SESSION: ",CURRENT_SESSION)
+        log.debug("CURRENT_SESSION: ",CURRENT_SESSION)
         if(!CURRENT_SESSION) throw Error("No session to fullfill!")
         if(CURRENT_SESSION.type === 'buy'){
             if(CURRENT_SESSION.SESSION_FUNDING_USD === 0) throw Error("No session to fullfill!")
             let amountOut = getQuoteForBuy(CURRENT_SESSION.SESSION_FUNDING_USD ?? 0)
-            log.info(tag,"amountOut: ",amountOut)
+            log.debug(tag,"amountOut: ",amountOut)
             //round to int
             let addressFullFill = CURRENT_SESSION.address
             let txid
@@ -885,47 +885,47 @@ let fullfill_order = async function (sessionId:string) {
         }
         if(CURRENT_SESSION.type === 'sell'){
             let amountOut = getQuoteForSellOfExactCryptoValue(CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0)
-            log.info(tag,"amountOut: ",amountOut)
+            log.debug(tag,"amountOut: ",amountOut)
             amountOut = parseInt(amountOut.toString())
-            log.info(tag,"amountOut (rounded): ",amountOut)
+            log.debug(tag,"amountOut (rounded): ",amountOut)
             clear_session()
             let txid = await payout_cash(amountOut.toString())
             if(WALLET_FAKE_BALANCES){
-                log.info("dispensing fake bills!")
+                log.debug("dispensing fake bills!")
                 //algo large to small
                 let isDespensing = true
 
                 let dispense = function(amountOut:number){
                     if(amountOut >= 100){
-                        log.info("Dispensing 100$")
+                        log.debug("Dispensing 100$")
                         ALL_BILLS[100] = ALL_BILLS[100] - 1
                         amountOut = amountOut - 100
                     } else if(amountOut >= 50){
-                        log.info("Dispensing 50$")
+                        log.debug("Dispensing 50$")
                         if(amountOut >= 50){
                             ALL_BILLS[50] = ALL_BILLS[50] - 1
                             amountOut = amountOut - 50
                         }
                     }else if(amountOut >= 20){
-                        log.info("Dispensing 20$")
+                        log.debug("Dispensing 20$")
                         if(amountOut >= 20){
                             ALL_BILLS[20] = ALL_BILLS[20] - 1
                             amountOut = amountOut - 20
                         }
                     } else if (amountOut >= 10){
-                        log.info("Dispensing 10$")
+                        log.debug("Dispensing 10$")
                         if(amountOut >= 10){
                             ALL_BILLS[10] = ALL_BILLS[10] - 1
                             amountOut = amountOut - 10
                         }
                     }else if (amountOut >= 5){
-                        log.info("Dispensing 5")
+                        log.debug("Dispensing 5")
                         if(amountOut >= 5){
                             ALL_BILLS[5] = ALL_BILLS[5] - 1
                             amountOut = amountOut - 5
                         }
                     }else if (amountOut >= 1){
-                        log.info("Dispensing 1")
+                        log.debug("Dispensing 1")
                         if(amountOut >= 1){
                             ALL_BILLS[1] = ALL_BILLS[1] - 1
                             amountOut = amountOut - 1
@@ -940,7 +940,7 @@ let fullfill_order = async function (sessionId:string) {
                         isDespensing = false
                     }
                 }
-                log.info("Done dispensing")
+                log.debug("Done dispensing")
             }
             if(!ATM_NO_HARDWARE){
                 await countBills()    
@@ -965,13 +965,13 @@ let fullfill_order = async function (sessionId:string) {
         }
         if(CURRENT_SESSION.type === 'lpAdd' || CURRENT_SESSION.type === 'lpAddAsym'){
             //caluate LP tokens
-            log.info("CURRENT_SESSION: ",CURRENT_SESSION)
-            log.info("SESSION_FUNDING_DAI: ",CURRENT_SESSION.address)
-            log.info("SESSION_FUNDING_DAI: ",CURRENT_SESSION.SESSION_FUNDING_DAI)
-            log.info("SESSION_FUNDING_USD: ",CURRENT_SESSION.SESSION_FUNDING_USD)
+            log.debug("CURRENT_SESSION: ",CURRENT_SESSION)
+            log.debug("SESSION_FUNDING_DAI: ",CURRENT_SESSION.address)
+            log.debug("SESSION_FUNDING_DAI: ",CURRENT_SESSION.SESSION_FUNDING_DAI)
+            log.debug("SESSION_FUNDING_USD: ",CURRENT_SESSION.SESSION_FUNDING_USD)
             let resultToken = await capTable.add(CURRENT_SESSION.address,CURRENT_SESSION.SESSION_FUNDING_USD,CURRENT_SESSION.SESSION_FUNDING_DAI)
             // let lpTokens = await calculate_lp_tokens(CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0,CURRENT_SESSION.CURRENT_SESSION.SESSION_FUNDING_USD ?? 0)
-            log.info("resultToken: ",resultToken)
+            log.debug("resultToken: ",resultToken)
             pioneer.PushEvent({
                 type:"sessionFullFilledLpAdd",
                 event:"session credited ownership LP tokens: : "+resultToken+" | owner: "+CURRENT_SESSION.address,
@@ -985,9 +985,9 @@ let fullfill_order = async function (sessionId:string) {
             return "LP:ADD:TXID:PLACEHOLDER"
         }
         if(CURRENT_SESSION.type === 'lpWithdraw' || CURRENT_SESSION.type === 'lpWithdrawAsym'){
-            log.info("CURRENT_SESSION: ",CURRENT_SESSION)
-            log.info("address: ",CURRENT_SESSION.address)
-            log.info("amountOut: ",CURRENT_SESSION.amountOut)
+            log.debug("CURRENT_SESSION: ",CURRENT_SESSION)
+            log.debug("address: ",CURRENT_SESSION.address)
+            log.debug("amountOut: ",CURRENT_SESSION.amountOut)
 
             //
             let totalCash = 0;
@@ -999,46 +999,46 @@ let fullfill_order = async function (sessionId:string) {
 
             //remove
             let resultRemoval = await capTable.remove(CURRENT_SESSION.address,CURRENT_SESSION.amountOut)
-            log.info("resultRemoval: ",resultRemoval)
+            log.debug("resultRemoval: ",resultRemoval)
 
             //withdraw USD
             if(ATM_NO_HARDWARE){
                 let amountOut = resultRemoval.dispenseUSD
-                log.info("dispensing fake bills!")
+                log.debug("dispensing fake bills!")
                 //algo large to small
                 let isDespensing = true
 
                 let dispense = function(amountOut:number){
                     if(amountOut >= 100){
-                        log.info("Dispensing 100$")
+                        log.debug("Dispensing 100$")
                         ALL_BILLS[100] = ALL_BILLS[100] - 1
                         amountOut = amountOut - 100
                     } else if(amountOut >= 50){
-                        log.info("Dispensing 50$")
+                        log.debug("Dispensing 50$")
                         if(amountOut >= 50){
                             ALL_BILLS[50] = ALL_BILLS[50] - 1
                             amountOut = amountOut - 50
                         }
                     }else if(amountOut >= 20){
-                        log.info("Dispensing 20$")
+                        log.debug("Dispensing 20$")
                         if(amountOut >= 20){
                             ALL_BILLS[20] = ALL_BILLS[20] - 1
                             amountOut = amountOut - 20
                         }
                     } else if (amountOut >= 10){
-                        log.info("Dispensing 10$")
+                        log.debug("Dispensing 10$")
                         if(amountOut >= 10){
                             ALL_BILLS[10] = ALL_BILLS[10] - 1
                             amountOut = amountOut - 10
                         }
                     }else if (amountOut >= 5){
-                        log.info("Dispensing 5")
+                        log.debug("Dispensing 5")
                         if(amountOut >= 5){
                             ALL_BILLS[5] = ALL_BILLS[5] - 1
                             amountOut = amountOut - 5
                         }
                     }else if (amountOut >= 1){
-                        log.info("Dispensing 1")
+                        log.debug("Dispensing 1")
                         if(amountOut >= 1){
                             ALL_BILLS[1] = ALL_BILLS[1] - 1
                             amountOut = amountOut - 1
@@ -1053,7 +1053,7 @@ let fullfill_order = async function (sessionId:string) {
                         isDespensing = false
                     }
                 }
-                log.info("Done dispensing")
+                log.debug("Done dispensing")
             }
             //Withdraw DAI
             if(WALLET_FAKE_PAYMENTS){
@@ -1067,8 +1067,8 @@ let fullfill_order = async function (sessionId:string) {
                 totalCash2 = totalCash2 + (parseInt(key) * ALL_BILLS[key]);
             });
             TOTAL_CASH = totalCash2
-            log.info(tag,"TOTAL_CASH: ",TOTAL_CASH)
-            log.info(tag,"TOTAL_DAI: ",TOTAL_DAI)
+            log.debug(tag,"TOTAL_CASH: ",TOTAL_CASH)
+            log.debug(tag,"TOTAL_DAI: ",TOTAL_DAI)
             capTable.sync(TOTAL_CASH,TOTAL_DAI)
             pioneer.PushEvent({
                 type:"sessionFullFilledLpWithdraw",
@@ -1082,12 +1082,12 @@ let fullfill_order = async function (sessionId:string) {
             return "LP:REMOVE:USD"+resultRemoval.dispenseUSD+":DAI"+resultRemoval.dispenseDAI+":TXID:PLACEHOLDER"
         }
         // if(CURRENT_SESSION.type === 'lpWithdrawAsym'){
-        //     log.info("CURRENT_SESSION: ",CURRENT_SESSION)
-        //     log.info("SESSION_FUNDING_DAI: ",CURRENT_SESSION.amountOut)
+        //     log.debug("CURRENT_SESSION: ",CURRENT_SESSION)
+        //     log.debug("SESSION_FUNDING_DAI: ",CURRENT_SESSION.amountOut)
         //     //caluate LP tokens
         //     let resultToken = await capTable.remove(CURRENT_SESSION.address,CURRENT_SESSION.SESSION_FUNDING_USD,CURRENT_SESSION.SESSION_FUNDING_DAI)
         //     // let lpTokens = await calculate_lp_tokens(CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0,CURRENT_SESSION.CURRENT_SESSION.SESSION_FUNDING_USD ?? 0)
-        //     log.info("resultToken: ",resultToken)
+        //     log.debug("resultToken: ",resultToken)
         //     //credit owner
         //
         //     return "LP:REMOVE:TXID:PLACEHOLDER"
@@ -1104,8 +1104,8 @@ const credit_session = async function (input) {
         if (!input.asset) throw Error("No asset!");
         if (!input.amount) throw Error("No amount!");
         if (!input.sessionId) throw Error("No sessionId!");
-        log.info(tag, "input: ", input);
-        log.info(tag, "CURRENT_SESSION: ", CURRENT_SESSION);
+        log.debug(tag, "input: ", input);
+        log.debug(tag, "CURRENT_SESSION: ", CURRENT_SESSION);
         pioneer.PushEvent({
             type:"creditSessionUSD",
             terminalName:TERMINAL_NAME,
@@ -1124,27 +1124,27 @@ const credit_session = async function (input) {
                 let isCrediting = true;
                 let deposit = function (amountIn) {
                     if (amountIn >= 100) {
-                        log.info("Depositing 100$");
+                        log.debug("Depositing 100$");
                         ALL_BILLS[100] = ALL_BILLS[100] + 1;
                         amountIn = amountIn - 100;
                     } else if (amountIn >= 50) {
-                        log.info("Depositing 50$");
+                        log.debug("Depositing 50$");
                         ALL_BILLS[50] = ALL_BILLS[50] + 1;
                         amountIn = amountIn - 50;
                     } else if (amountIn >= 20) {
-                        log.info("Depositing 20$");
+                        log.debug("Depositing 20$");
                         ALL_BILLS[20] = ALL_BILLS[20] + 1;
                         amountIn = amountIn - 20;
                     } else if (amountIn >= 10) {
-                        log.info("Depositing 10$");
+                        log.debug("Depositing 10$");
                         ALL_BILLS[10] = ALL_BILLS[10] + 1;
                         amountIn = amountIn - 10;
                     } else if (amountIn >= 5) {
-                        log.info("Depositing 5$");
+                        log.debug("Depositing 5$");
                         ALL_BILLS[5] = ALL_BILLS[5] + 1;
                         amountIn = amountIn - 5;
                     } else if (amountIn >= 1) {
-                        log.info("Depositing 1$");
+                        log.debug("Depositing 1$");
                         ALL_BILLS[1] = ALL_BILLS[1] + 1;
                         amountIn = amountIn - 1;
                     }
@@ -1182,8 +1182,8 @@ const credit_session = async function (input) {
                 CURRENT_SESSION.SESSION_FUNDING_USD = halfUsdAmount;
                 CURRENT_SESSION.SESSION_FUNDING_DAI = convertedDai;
 
-                log.info(tag, "SESSION_FUNDING_USD: ", CURRENT_SESSION.SESSION_FUNDING_USD);
-                log.info(tag, "SESSION_FUNDING_DAI: ", CURRENT_SESSION.SESSION_FUNDING_DAI);
+                log.debug(tag, "SESSION_FUNDING_USD: ", CURRENT_SESSION.SESSION_FUNDING_USD);
+                log.debug(tag, "SESSION_FUNDING_DAI: ", CURRENT_SESSION.SESSION_FUNDING_DAI);
 
             } else if (input.asset === 'DAI') {
                 const daiAmount = parseFloat(input.amount);
@@ -1193,8 +1193,8 @@ const credit_session = async function (input) {
                 CURRENT_SESSION.SESSION_FUNDING_DAI = halfDaiAmount;
                 CURRENT_SESSION.SESSION_FUNDING_USD = convertedUsd;
 
-                log.info(tag, "SESSION_FUNDING_DAI: ", CURRENT_SESSION.SESSION_FUNDING_DAI);
-                log.info(tag, "SESSION_FUNDING_USD: ", CURRENT_SESSION.SESSION_FUNDING_USD);
+                log.debug(tag, "SESSION_FUNDING_DAI: ", CURRENT_SESSION.SESSION_FUNDING_DAI);
+                log.debug(tag, "SESSION_FUNDING_USD: ", CURRENT_SESSION.SESSION_FUNDING_USD);
             }
         }
 
@@ -1209,15 +1209,15 @@ const credit_session = async function (input) {
 let payout_cash = async function (amount:string) {
     let tag = TAG + " | payout_cash | "
     try {
-        log.info(tag,"Paying out cash!: ",amount)
+        log.debug(tag,"Paying out cash!: ",amount)
         if(NO_BROADCAST){
-            log.info("NO_BROADCAST set not paying")
+            log.debug("NO_BROADCAST set not paying")
             return "paied bro"
         } else{
             amount = amount.toString()
             if(amount === "0") amount = "1" //@TODO WTF WTY
-            log.info("paying out cash: ",amount)
-            log.info("paying out cash: ",typeof(amount))
+            log.debug("paying out cash: ",amount)
+            log.debug("paying out cash: ",typeof(amount))
 
             //verify
             if(!ATM_NO_HARDWARE){
@@ -1227,7 +1227,7 @@ let payout_cash = async function (amount:string) {
                     country_code: 'USD',
                     test: false,
                 })
-                log.info("result: ",result)
+                log.debug("result: ",result)
                 await dispensed    
             }
         }
@@ -1241,23 +1241,23 @@ let payout_cash = async function (amount:string) {
 let send_to_address = async function (address:string,amount:number) {
     let tag = TAG + " | send_to_address | "
     try {
-        log.info(tag,"address:",address)
-        log.info(tag,"amount:",amount)
+        log.debug(tag,"address:",address)
+        log.debug(tag,"amount:",amount)
         TXS_FULLFILLED.push(CURRENT_SESSION.sessionId)
         // @ts-ignore
         let value = parseInt(amount * Math.pow(10, 18)).toString()
-        log.info(tag,"value:",value)
+        log.debug(tag,"value:",value)
         let addressFrom = await signer.getAddress(WALLET_MAIN)
         //web3 get nonce
         let nonce = await WEB3.eth.getTransactionCount(addressFrom)
         // nonce = nonce + 3
-        console.log("nonce: ",nonce)
+        //console.log("nonce: ",nonce)
         nonce = WEB3.utils.toHex(nonce)
 
 
         //get gas price
         let gasPrice = await WEB3.eth.getGasPrice()
-        console.log("gasPrice: ",gasPrice)
+        //console.log("gasPrice: ",gasPrice)
         gasPrice = WEB3.utils.toHex(gasPrice)
 
 
@@ -1266,7 +1266,7 @@ let send_to_address = async function (address:string,amount:number) {
 
         //get balance
         let balance = await WEB3.eth.getBalance(address)
-        console.log("balance: ",balance)
+        //console.log("balance: ",balance)
 
         //get token data
         let tokenData = await WEB3.eth.abi.encodeFunctionCall({
@@ -1309,10 +1309,10 @@ let send_to_address = async function (address:string,amount:number) {
             "data": tokenData,
             chainId:1,
         }
-        log.info("input: ",input)
+        log.debug("input: ",input)
         //signer
         let result = await signer.signTx(input, WALLET_MAIN)
-        log.info("result: ",result)
+        log.debug("result: ",result)
 
         if(NO_BROADCAST){
             return "NERFED!-nobroadcast"
@@ -1320,24 +1320,24 @@ let send_to_address = async function (address:string,amount:number) {
             //broadcast
             WEB3.eth.sendSignedTransaction(result)
                 .once('transactionHash', function(hash){
-                    console.log("txHash", hash)
+                    //console.log("txHash", hash)
                     CURRENT_SESSION.txid = hash
                     publisher.publish("payments",JSON.stringify({txid:hash,session:CURRENT_SESSION,type:'fullfill'}))
                     return hash
                 })
-                .once('receipt', function(receipt){ console.log("receipt", receipt) })
+                .once('receipt', function(receipt){ log.debug("receipt", receipt) })
                 .on('confirmation', function(confNumber, receipt){
                     if(confNumber === 1){
                         CURRENT_SESSION.status = 'fullfilled'
                         console.log("confNumber",confNumber,"receipt",receipt) }
                 })
-                .on('error', function(error){ console.log("error", error) })
+                .on('error', function(error){ log.error("error", error) })
                 .then(function(receipt){
                     console.log("trasaction mined!", receipt);
                 });
         }
 
-        // log.info("txHash: ",txHash)
+        // log.debug("txHash: ",txHash)
         // return txHash
     } catch (e) {
         console.error(tag, "e: ", e)
@@ -1368,12 +1368,12 @@ let get_balance = async function () {
             }
         ];
         let address = await signer.getAddress(WALLET_MAIN)
-        console.log("address: ",address)
+        //console.log("address: ",address)
         const newContract = new WEB3.eth.Contract(minABI, DAI_CONTRACT);
         const decimals = await newContract.methods.decimals().call();
-        console.log("decimals: ",decimals)
+        //console.log("decimals: ",decimals)
         const balanceBN = await newContract.methods.balanceOf(address).call()
-        console.log("input: balanceBN: ",balanceBN)
+        //console.log("input: balanceBN: ",balanceBN)
         // @ts-ignore
         let tokenBalance = parseInt(balanceBN/Math.pow(10, decimals))
         return tokenBalance
@@ -1469,17 +1469,17 @@ let set_session_buy = async function (input:any) {
 let set_session_sell = async function (input) {
     let tag = TAG + " | set_session_sell | "
     try {
-        log.info(tag,"input: ",input)
+        log.debug(tag,"input: ",input)
         //if buy intake address
         let sessionId = uuid.generate()
         let amount = input.amount
         if(!amount) throw Error("no amount!")
 
-        log.info("TOTAL_CASH: ",TOTAL_CASH)
-        log.info("TOTAL_DAI: ",TOTAL_DAI)
+        log.debug("TOTAL_CASH: ",TOTAL_CASH)
+        log.debug("TOTAL_DAI: ",TOTAL_DAI)
         //amountIn
         let amountIn = getQuoteForSellProducingCashValue(amount)
-        log.info("amountIn: ",amountIn)
+        log.debug("amountIn: ",amountIn)
 
         //address
         let address = await signer.getAddress(WALLET_MAIN)
@@ -1502,7 +1502,7 @@ let set_session_sell = async function (input) {
             TOTAL_DAI
         })
 
-        log.info("CURRENT_SESSION: ",CURRENT_SESSION)
+        log.debug("CURRENT_SESSION: ",CURRENT_SESSION)
         return CURRENT_SESSION
     } catch (e) {
         console.error(tag, "e: ", e)
@@ -1516,7 +1516,7 @@ let set_session_lp_add = async function (input) {
         //if buy intake address
         let sessionId = uuid.generate()
         let address = input.address
-        log.info(tag,"input: ",input)
+        log.debug(tag,"input: ",input)
         CURRENT_SESSION = {
             sessionId,
             address,
@@ -1532,7 +1532,7 @@ let set_session_lp_add = async function (input) {
             TOTAL_CASH,
             TOTAL_DAI
         })
-        log.info(tag,"CURRENT_SESSION: ",CURRENT_SESSION)
+        log.debug(tag,"CURRENT_SESSION: ",CURRENT_SESSION)
         return CURRENT_SESSION
     } catch (e) {
         console.error(tag, "e: ", e)
@@ -1567,7 +1567,7 @@ let set_session_lp_add_asym = async function (input) {
 let set_session_lp_withdraw = async function (input) {
     let tag = TAG + " | set_session_lp_withdraw | "
     try {
-        log.info(tag,"set_session_lp_withdraw: ",input)
+        log.debug(tag,"set_session_lp_withdraw: ",input)
         //if buy intake address
         let sessionId = uuid.generate()
         let address = input.address
@@ -1588,7 +1588,7 @@ let set_session_lp_withdraw = async function (input) {
             TOTAL_CASH,
             TOTAL_DAI
         })
-        log.info(tag,"CURRENT_SESSION: ",CURRENT_SESSION)
+        log.debug(tag,"CURRENT_SESSION: ",CURRENT_SESSION)
         return CURRENT_SESSION
     } catch (e) {
         console.error(tag, "e: ", e)

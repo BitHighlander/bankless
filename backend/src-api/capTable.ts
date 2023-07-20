@@ -6,7 +6,7 @@ const log = require('@pioneer-platform/loggerdog')();
 const { subscriber, publisher, redis, redisQueue } = require('@pioneer-platform/default-redis');
 let signer = require("eth_mnemonic_signer");
 let os = require("os");
-
+const database = require('./database');
 let wait = require('wait-promise');
 let sleep = wait.sleep;
 
@@ -68,22 +68,42 @@ function calculateValueByOwner() {
     return valueByOwner;
 }
 
-let init_cap = function () {
+/*
+    If no cap entities in DB then we init DB
+
+    Assign ALL assets to owner of ATM
+
+    @TODO autit every startup and verify USD of pool prior to shutdown
+    LP owners need to know if owner has removed assets without receipt!
+ */
+
+let init_cap = async function () {
     let tag = TAG + " | init_cap | ";
     try {
         log.info("Initing Cap table!")
         log.info("TOTAL_DAI: ", TOTAL_DAI)
         log.info("TOTAL_USD: ", TOTAL_USD)
 
-        const totalLPTokens = calculateTotalLPTokens(TOTAL_USD, TOTAL_DAI);
-        log.info("totalLPTokens: ", totalLPTokens)
+        //get cap table
+        let allCap = await database.getAllCapEntries()
+        log.info("allCap: ", allCap)
 
-        let ownershipPercentage = 1
-        CAP_TABLE.push({
-            address: ATM_OWNER,
-            lpTokens: totalLPTokens,
-            percentage: 100
-        });
+        if(allCap.length > 0){
+            CAP_TABLE = allCap;
+        }else{
+            const totalLPTokens = calculateTotalLPTokens(TOTAL_USD, TOTAL_DAI);
+            log.info("totalLPTokens: ", totalLPTokens)
+
+            let ownershipPercentage = 1
+            CAP_TABLE.push({
+                address: ATM_OWNER,
+                lpTokens: totalLPTokens,
+                percentage: 100
+            });
+            database.addCapitalEntry(ATM_OWNER, totalLPTokens, 100)
+        }
+
+        //create DB entry
         log.info("CAP_TABLE: ", CAP_TABLE)
     } catch (e) {
         console.error(tag, "e: ", e);
@@ -115,14 +135,28 @@ let add_cap = async function (address, amountUSD, amountDAI) {
         const lpTokensToMint = totalLPTokensAfter - totalLPTokensBefore;
 
         TOTAL_LP_TOKENS += lpTokensToMint; // Update total LP tokens
-
+        let percentage = (lpTokensToMint / totalLPTokensAfter) * 100
         let entry = {
             address: address,
             lpTokens: lpTokensToMint,
-            percentage: (lpTokensToMint / totalLPTokensAfter) * 100
+            percentage
         };
         CAP_TABLE.push(entry);
+        database.addCapitalEntry(ATM_OWNER, lpTokensToMint, 100)
 
+        //get cap table
+        let allCap = await database.getAllCapEntries()
+        log.info("allCap: ", allCap)
+        
+        //recalibrate percentages of pool
+        for(let i = 0; i < allCap.length; i++){
+            //new percentage
+            let percentage = (allCap[i].lpTokens / TOTAL_LP_TOKENS) * 100
+            allCap[i].percentage = percentage
+            //update db
+            database.updateCapitalEntry(allCap[i].address, percentage)
+        }
+        
         return entry;
     } catch (e) {
         console.error(tag, "e: ", e);
