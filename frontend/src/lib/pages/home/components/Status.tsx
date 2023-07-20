@@ -1,5 +1,8 @@
 import axios from "axios";
 import React, { useEffect, useState } from "react";
+import {
+  Button
+} from "@chakra-ui/react";
 
 const Onramp = () => {
   const [availableOnes, setAvailableOnes] = useState(0);
@@ -15,6 +18,20 @@ const Onramp = () => {
     billacceptor: "...",
     hotwallet: "...",
   });
+
+  const startLoad = async function () {
+    try{
+      //turn on acceptor
+      //start session
+      let respCreate = await axios.get(
+          "http://127.0.0.1:4000/api/v1/startAcceptor"
+      );
+      respCreate = respCreate.data
+      console.log("respCreate: ", respCreate);
+    }catch(e){
+      console.error(e)
+    }
+  }
 
   const onStart = async function () {
     try {
@@ -58,6 +75,7 @@ const Onramp = () => {
       <tr><th>Total DAI</th><td>{Number(status.balanceDAI).toFixed(2)}</td></tr>
       <tr><th>Rate</th><td>{Number(status.rate).toFixed(2)} USD per DAI</td></tr>
       <tr><th>Cash</th><td>
+      <Button>Load Cash</Button>
 	<table>
 		<tr><th>$1</th><th>$5</th><th>$10</th><th>$20</th><th>$50</th><th>$100</th></tr>
 		<tr><td>{availableOnes}</td><td>{availableFives}</td><td>{availableTens}</td><td>{availableTwenties}</td><td>{availableFifties}</td><td>{availableHundreds}</td></tr>

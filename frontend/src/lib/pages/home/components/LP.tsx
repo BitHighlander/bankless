@@ -6,32 +6,54 @@ import {
   FormLabel,
   Grid,
   Input,
+  Avatar,
+  Stack,
+  Switch,
   Tabs, TabList, TabPanels, Tab, TabPanel
 } from "@chakra-ui/react";
 import axios from "axios";
 import React, { useEffect } from "react";
+import daiImage from 'lib/assets/dai.png';
+import dollarsImage from 'lib/assets/dollars.png';
 
-const LP = () => {
+// @ts-ignore
+const LP = ({ setLockTabs }) => {
   const [sessionInit, setSessionInit] = React.useState(false);
+  const [isAsync, setisAsync] = React.useState(false);
+  const [typeSelected, setTypeSelected] = React.useState(false);
   // const [sessionInit, setSessionInit] = React.useState(false);
   const [address, setAddress] = React.useState("");
+  const [lpAsset, setLpAsset] = React.useState("USD");
   const handleInputChangeAddress = (e: any) => setAddress(e.target.value);
 
-  const onSubmitSync = async function () {
+  const onSubmit = async function () {
     try {
-
+      console.log("isAsync: ", isAsync)
+      if(isAsync){
+        const body = {
+          address,
+          type:"sync"
+        };
+        const submitResp = await axios.post(
+            "http://localhost:4000/api/v1/create/lpAddAsym",
+            body
+        );
+        // eslint-disable-next-line no-console
+        console.log("submitResp: ", submitResp);
+      } else {
+        const body = {
+          address,
+          type:"sync"
+        };
+        const submitResp = await axios.post(
+            "http://localhost:4000/api/v1/create/lpAdd",
+            body
+        );
+        // eslint-disable-next-line no-console
+        console.log("submitResp: ", submitResp);
+      }
       setSessionInit(true);
-      const body = {
-        address,
-        type:"sync"
-      };
-
-      const submitResp = await axios.post(
-        "http://localhost:4000/api/v1/create/lp",
-        body
-      );
-      // eslint-disable-next-line no-console
-      console.log("submitResp: ", submitResp);
+      setLockTabs(true);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error(e);
@@ -89,6 +111,22 @@ const LP = () => {
     }
   };
 
+  const onSelectType = async function (type:string) {
+    try {
+      console.log("selected type: ",type)
+      //
+      if(type === "sync"){
+        setisAsync(false);
+      } else {
+        setisAsync(true);
+      }
+      setTypeSelected(true);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(e);
+    }
+  };
+
   const onStart = async function () {
     try {
       //
@@ -103,44 +141,26 @@ const LP = () => {
     onStart();
   }, []);
 
+  const handleToggleChange = () => {
+    setLpAsset((prevAsset) => (prevAsset === 'USD' ? 'DAI' : 'USD'));
+  };
+
   const isError = false;
 
   return (
     <Grid textAlign="center" gap={2}>
       Provide LP to device.
-      <Tabs>
-        <TabList>
-          <Tab>Sync</Tab>
-          <Tab>Async</Tab>
-        </TabList>
-
-        <TabPanels>
-          <TabPanel>
-            <p>You will deposit DAI and USD and will receive LP tokens (offchain)</p>
-            {sessionInit ? (
+      {sessionInit ? (
+          <div>
+            Session Started!
+            <br/>
+            type: {isAsync ? "async" : "sync"}
+          </div>
+      ): (
+          <div>
+            {typeSelected ? (
                 <div>
-                  session {} (awaiting deposit....)
-                  <Button
-                      mt={4}
-                      colorScheme="teal"
-                      // isLoading={props.isSubmitting}
-                      type="submit"
-                      onClick={onCheckDollars}
-                  >
-                    update
-                  </Button>
-                  <Button
-                      mt={4}
-                      colorScheme="teal"
-                      // isLoading={props.isSubmitting}
-                      type="submit"
-                      onClick={onDoneSync}
-                  >
-                    Done
-                  </Button>
-                </div>
-            ) : (
-                <div>
+                  LP tokens are held by your wallet. Scan your Wallets Address QR code to deposit.
                   <FormControl isInvalid={isError}>
                     <FormLabel>Address (ETH)</FormLabel>
                     <Input
@@ -158,68 +178,25 @@ const LP = () => {
                         colorScheme="teal"
                         // isLoading={props.isSubmitting}
                         type="submit"
-                        onClick={onSubmitSync}
+                        onClick={onSubmit}
                     >
                       Continue
                     </Button>
                   </FormControl>
-                </div>
-            )}
-          </TabPanel>
-          <TabPanel>
-            <p>You will deposit DAI OR USD and will receive LP tokens (offchain)</p>
-            {sessionInit ? (
-                <div>
-                  session {} (awaiting deposit....)
-                  <Button
-                      mt={4}
-                      colorScheme="teal"
-                      // isLoading={props.isSubmitting}
-                      type="submit"
-                      onClick={onCheckDollars}
-                  >
-                    update
-                  </Button>
-                  <Button
-                      mt={4}
-                      colorScheme="teal"
-                      // isLoading={props.isSubmitting}
-                      type="submit"
-                      onClick={onDoneAsync}
-                  >
-                    Done
-                  </Button>
                 </div>
             ) : (
                 <div>
-                  <FormControl isInvalid={isError}>
-                    <FormLabel>Address</FormLabel>
-                    <Input
-                        type="email"
-                        value={address}
-                        onChange={handleInputChangeAddress}
-                    />
-                    {!isError ? (
-                        <FormHelperText>Enter your address</FormHelperText>
-                    ) : (
-                        <FormErrorMessage>address is required.</FormErrorMessage>
-                    )}
-                    <Button
-                        mt={4}
-                        colorScheme="teal"
-                        // isLoading={props.isSubmitting}
-                        type="submit"
-                        onClick={onSubmitAsync}
-                    >
-                      Continue
-                    </Button>
-                  </FormControl>
+                  <br/>
+                  <Button
+                    onClick={() => {onSelectType("sync")}}
+                  >I have BOTH USD and DAI to deposit evenly</Button>
+                  <br/>
+                  <Button>I have EITHER USD and DAI to deposit (swap frees apply)</Button>
                 </div>
             )}
-          </TabPanel>
-        </TabPanels>
-      </Tabs>
-      <br/>
+          </div>
+      )}
+
     </Grid>
   );
 };

@@ -626,7 +626,9 @@ let onStart = async function (){
                     totalCash = totalCash + (parseInt(key) * ALL_BILLS[key]);
                 });
                 let rate = (TOTAL_CASH / TOTAL_DAI)
-                if(!rate) throw Error("rate is required!")
+                if(!rate) { // @ts-ignore
+                    rate = "0"
+                }
                 let terminal = {
                     TOTAL_CASH:totalCash.toString(),
                     TOTAL_DAI:TOTAL_DAI.toString(),
@@ -698,6 +700,14 @@ module.exports = {
     },
     payout: async function (amount:string) {
         return payout_cash(amount);
+    },
+    startAcceptor: async function () {
+        if(!ATM_NO_HARDWARE)eSSP.enable()
+        return true;
+    },
+    stopAcceptor: async function () {
+        if(!ATM_NO_HARDWARE)eSSP.enable()
+        return true;
     },
     fullfill: async function (sessionId:string) {
         return fullfill_order(sessionId);

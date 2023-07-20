@@ -63,7 +63,7 @@ const Home = () => {
           <TabList>
               <Tab isDisabled={lockTabs}>Onramp</Tab>
               <Tab isDisabled={lockTabs}>Offramp</Tab>
-              <Tab isDisabled={lockTabs}>LP</Tab>
+              {/*<Tab isDisabled={lockTabs}>LP</Tab>*/}
               <Tab isDisabled={lockTabs}>Status</Tab>
           </TabList>
 
@@ -74,9 +74,9 @@ const Home = () => {
               <TabPanel>
                   <Offramp setLockTabs={setLockTabs} />
               </TabPanel>
-              <TabPanel>
-                  <LP setLockTabs={setLockTabs} />
-              </TabPanel>
+              {/*<TabPanel>*/}
+              {/*    <LP setLockTabs={setLockTabs} />*/}
+              {/*</TabPanel>*/}
               <TabPanel>
                   <Status setLockTabs={setLockTabs} />
               </TabPanel>
