@@ -40,6 +40,10 @@ export function get(): CapEntry[] {
     return CAP_TABLE;
 }
 
+export function tokens() {
+    return TOTAL_LP_TOKENS;
+}
+
 export function sync(usd: number, dai: number): void {
     TOTAL_USD = usd;
     TOTAL_DAI = dai;
@@ -64,6 +68,7 @@ export function add(address: string, amountUSD: number, amountDAI: number): Prom
 
 export function remove(address: string, percent: number): Promise<CapEntry> {
     try {
+        // @ts-ignore
         return remove_cap(address, percent);
     } catch (error) {
         log.info(TAG + 'remove_cap error:', error);
@@ -76,18 +81,33 @@ function calculateValueByOwner(): { address: string; valueUSD: number; valueDAI:
         const valueByOwner: { address: string; valueUSD: number; valueDAI: number }[] = [];
         const totalLPTokens = getTotalLPTokens();
 
-        for (const entry of CAP_TABLE) {
-            const address = entry.address;
-            const lpTokens = entry.lpTokens;
+        if (totalLPTokens === 0) {
+            // Handle division by zero case
+            for (const entry of CAP_TABLE) {
+                valueByOwner.push({
+                    address: entry.address,
+                    valueUSD: 0,
+                    valueDAI: 0,
+                });
+            }
+        } else {
+            for (const entry of CAP_TABLE) {
+                const address = entry.address;
+                const lpTokens = entry.lpTokens;
 
-            const valueUSD = (lpTokens / totalLPTokens) * TOTAL_USD;
-            const valueDAI = (lpTokens / totalLPTokens) * TOTAL_DAI;
+                const valueUSD = (lpTokens / totalLPTokens) * TOTAL_USD;
+                const valueDAI = (lpTokens / totalLPTokens) * TOTAL_DAI;
 
-            valueByOwner.push({
-                address: address,
-                valueUSD: valueUSD,
-                valueDAI: valueDAI,
-            });
+                // Check for NaN values and convert them to zero
+                const sanitizedValueUSD = Number.isNaN(valueUSD) ? 0 : valueUSD;
+                const sanitizedValueDAI = Number.isNaN(valueDAI) ? 0 : valueDAI;
+
+                valueByOwner.push({
+                    address: address,
+                    valueUSD: sanitizedValueUSD,
+                    valueDAI: sanitizedValueDAI,
+                });
+            }
         }
 
         return valueByOwner;
@@ -104,7 +124,7 @@ async function init_cap(): Promise<void> {
         if (CAP_TABLE.length === 0) {
             const totalLPTokens = calculateTotalLPTokens(TOTAL_USD, TOTAL_DAI);
             const ownershipPercentage = 100;
-
+            TOTAL_LP_TOKENS = totalLPTokens;
             const entry: CapEntry = {
                 id: 0,
                 address: ATM_OWNER,
@@ -121,51 +141,60 @@ async function init_cap(): Promise<void> {
     }
 }
 
-function add_cap(address: string, amountUSD: number, amountDAI: number): Promise<CapEntry> {
+let add_cap = async function(address: string, amountUSD: number, amountDAI: number): Promise<any> {
     try {
         const existingEntry = CAP_TABLE.find((entry) => entry.address === address);
 
+        const totalLPTokensBefore = getTotalLPTokens();
+        TOTAL_USD += amountUSD;
+        TOTAL_DAI += amountDAI;
+
+        const totalLPTokensAfter = calculateTotalLPTokens(TOTAL_USD, TOTAL_DAI);
+        const lpTokensToMint = calculateTotalLPTokens(amountUSD, amountDAI);
+
+        TOTAL_LP_TOKENS += lpTokensToMint;
+        
         if (existingEntry) {
-            const totalLPTokensBefore = getTotalLPTokens();
-            TOTAL_USD += amountUSD;
-            TOTAL_DAI += amountDAI;
+            const newLPtokens = existingEntry.lpTokens + lpTokensToMint;
+            const newPercentage = (newLPtokens / totalLPTokensAfter) * 100;
 
-            const totalLPTokensAfter = calculateTotalLPTokens(TOTAL_USD, TOTAL_DAI);
-            const lpTokensToMint = totalLPTokensAfter - totalLPTokensBefore;
+            // Check if the new total percentage exceeds 100%
+            if (newPercentage > 100) {
+                throw Error("Adding this entry will exceed the 100% limit.");
+            }
 
-            TOTAL_LP_TOKENS += lpTokensToMint;
+            existingEntry.lpTokens = newLPtokens;
+            existingEntry.percentage = newPercentage;
 
-            existingEntry.lpTokens += lpTokensToMint;
-            existingEntry.percentage = (existingEntry.lpTokens / totalLPTokensAfter) * 100;
-
-            if (!existingEntry.lpTokens) throw Error("Invalid existingEntry.lpTokens");
-            if (!existingEntry.id) throw Error("Invalid existingEntry.id");
-
-            return database.updateCapitalEntry(existingEntry.id, existingEntry.lpTokens, existingEntry.percentage).then(() => existingEntry);
+            await database.updateCapitalEntry(existingEntry.id, existingEntry.lpTokens, existingEntry.percentage);
+            return existingEntry;
         } else {
-            const totalLPTokensBefore = getTotalLPTokens();
-            TOTAL_USD += amountUSD;
-            TOTAL_DAI += amountDAI;
-
-            const totalLPTokensAfter = calculateTotalLPTokens(TOTAL_USD, TOTAL_DAI);
-            const lpTokensToMint = totalLPTokensAfter - totalLPTokensBefore;
-
-            TOTAL_LP_TOKENS += lpTokensToMint;
-
             const percentage = (lpTokensToMint / totalLPTokensAfter) * 100;
 
+            // Check if the new total percentage exceeds 100%
+            const newTotalPercentage = CAP_TABLE.reduce((total, entry) => total + entry.percentage, percentage);
+            if (newTotalPercentage > 100) {
+                // Adjust percentages to fit within 100%
+                const adjustmentFactor = 100 / newTotalPercentage;
+                CAP_TABLE.forEach((entry) => {
+                    entry.percentage *= adjustmentFactor;
+                });
+            }
+
+            let newId = 1;
+            if (CAP_TABLE.length > 0) {
+                newId = Math.max(...CAP_TABLE.map((entry) => entry.id)) + 1;
+            }
             const entry: CapEntry = {
-                id: 0,
+                id: newId,
                 address: address,
                 lpTokens: lpTokensToMint,
                 percentage: percentage,
             };
 
             CAP_TABLE.push(entry);
-            if (!lpTokensToMint) throw Error("Invalid lpTokensToMint");
-            if (!percentage) throw Error("Invalid percentage");
-
-            return database.addCapitalEntry(address, lpTokensToMint, percentage).then(() => entry);
+            await database.addCapitalEntry(address, lpTokensToMint, percentage);
+            return entry;
         }
     } catch (error) {
         log.info(TAG + 'add_cap error:', error);
@@ -173,26 +202,53 @@ function add_cap(address: string, amountUSD: number, amountDAI: number): Promise
     }
 }
 
-function remove_cap(address: string, percent: number): Promise<CapEntry> {
+let remove_cap = async function(address: string, percent: number) {
+    let tag = TAG + 'remove_cap: ';
     try {
-        const entry = CAP_TABLE.find(e => e.address === address);
-
+        log.info("CAP_TABLE:", CAP_TABLE);
+        const entry = CAP_TABLE.find((e) => e.address === address);
         if (!entry) {
             throw new Error(`No entry found for address: ${address}`);
         }
+        log.info("entry:", entry);
+        log.info("id:", entry.id);
 
         const lpTokensOut = (entry.lpTokens * percent) / 100;
+        log.info("lpTokensOut:", lpTokensOut);
+        log.info("entry:", entry.lpTokens);
 
-        if (lpTokensOut > entry.lpTokens) {
-            throw new Error(`Insufficient LP tokens: User does not have enough LP tokens to withdraw ${percent}%`);
+        //TODO update entry for new lpTokens
+        entry.lpTokens -= lpTokensOut;
+
+        //calulate new percentage of pool
+        entry.percentage = (entry.lpTokens / TOTAL_LP_TOKENS) * 100;
+        log.info("entry.percentage:", entry.percentage);
+        if(entry.percentage === 0 || entry.lpTokens === 0) {
+            //remove entry
+            await database.deleteCapitalEntry(entry.id)
+        } else {
+            //update entry
+            let result = await database.updateCapitalEntry(entry.id, entry.lpTokens, entry.percentage)
+            log.info(tag,"result updated entry:", result)
         }
 
-        const totalLpTokensInPool = getTotalLPTokens();
+        log.info("TOTAL_USD:", TOTAL_USD);
+        log.info("TOTAL_DAI:", TOTAL_DAI);
+        
+        const amountUSD = (lpTokensOut / TOTAL_LP_TOKENS) * TOTAL_USD;
+        const amountDAI = (lpTokensOut / TOTAL_LP_TOKENS) * TOTAL_DAI;
+        log.info("amountUSD: ", amountUSD);
+        log.info("amountDAI: ", amountDAI);
 
-        entry.lpTokens -= lpTokensOut;
-        entry.percentage = (entry.lpTokens / totalLpTokensInPool) * 100;
+        //calualte removal assets
+        log.info("TOTAL_LP_TOKENS:", TOTAL_LP_TOKENS);
+        TOTAL_LP_TOKENS -= lpTokensOut;
+        log.info("TOTAL_LP_TOKENS:", TOTAL_LP_TOKENS);
 
-        return database.updateCapitalEntry(entry.id, entry.lpTokens, entry.percentage).then(() => entry);
+        return {
+            amountUSD,
+            amountDAI,
+        }
     } catch (error) {
         log.info(TAG + 'remove_cap error:', error);
         throw error;

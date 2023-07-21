@@ -159,6 +159,7 @@ let CURRENT_SESSION: {
     status?: string,
     amountIn?: number,
     amountOut?: number,
+    percentage?: number,
     SESSION_FUNDING_USD?: number,
     SESSION_FUNDING_DAI?: number,
     SESSION_FULLFILLED?: boolean,
@@ -545,11 +546,13 @@ let onStart = async function (){
         })
         
         //getIPAddress
-        let ip = await getIPAddress()
-        log.debug("ip: ",ip)
-        await geoip2.reloadDataSync();
-        var geo = geoip2.lookup(ip);
-        log.debug("geo: ",geo)
+        let ip = "0.0.0.0"
+        var geo = [0,0]
+        // let ip = await getIPAddress()
+        // log.info("ip: ",ip)
+        // await geoip2.reloadDataSync();
+        // var geo = geoip2.lookup(ip);
+        // log.info("geo: ",geo)
 
         //get terminal info
         const configPioneer = {
@@ -559,21 +562,21 @@ let onStart = async function (){
         pioneer = new Pioneer(configPioneer.spec, configPioneer);
         pioneer = await pioneer.init();
         let terminalInfo = await pioneer.TerminalPrivate({terminalName:TERMINAL_NAME})
-        log.debug(tag,"terminalInfo: ",terminalInfo.data)
+        log.info(tag,"terminalInfo: ",terminalInfo.data)
         //check total cash
         let totalCash = 0;
         Object.keys(ALL_BILLS).forEach(key => {
             totalCash = totalCash + (parseInt(key) * ALL_BILLS[key]);
         });
-        log.debug(tag,"TOTAL_CASH: ",TOTAL_CASH)
-        log.debug(tag,"TOTAL_DAI: ",TOTAL_DAI)
+        log.info(tag,"TOTAL_CASH: ",TOTAL_CASH)
+        log.info(tag,"TOTAL_DAI: ",TOTAL_DAI)
         let rate
         if(TOTAL_CASH == 0 || TOTAL_DAI == 0){
             rate = "0"
         } else {
             rate = (TOTAL_CASH / TOTAL_DAI)    
         }
-        log.debug(tag,"rate: ",rate)
+        log.info(tag,"rate: ",rate)
         //if no info register
         let captable = await capTable.get()
         if(!terminalInfo.data.terminalInfo){
@@ -588,10 +591,10 @@ let onStart = async function (){
                 TOTAL_DAI:TOTAL_DAI.toString(),
                 pubkey:await signer.getAddress(WALLET_MAIN),
                 fact:"",
-                location:geo.ll || [ 4.5981, -74.0758 ]
+                location:[ 4.5981, -74.0758 ]
             }
             let result = await pioneer.SubmitTerminal(terminal)
-            log.debug(tag,"result: ",result)
+            log.info(tag,"result: ",result)
         } else {
             //update location and rate
             log.debug("captable: ",captable)
@@ -604,7 +607,7 @@ let onStart = async function (){
                 TOTAL_CASH:TOTAL_CASH.toString(),
                 TOTAL_DAI:TOTAL_DAI.toString(),
                 captable,
-                location:geo.ll || [ 4.5981, -74.0758 ]
+                location:[ 4.5981, -74.0758 ]
             }
             let updateResp = await pioneer.UpdateTerminal(payload)
         }
@@ -636,7 +639,7 @@ let onStart = async function (){
                     pubkey:await signer.getAddress(WALLET_MAIN),
                     terminalId:TERMINAL_NAME+":"+await signer.getAddress(WALLET_MAIN),
                     terminalName:TERMINAL_NAME,
-                    location:geo.ll || [ 4.5981, -74.0758 ],
+                    location:[ 4.5981, -74.0758 ],
                     sessionId: GLOBAL_SESSION,
                     captable,
                     uptime
@@ -850,12 +853,19 @@ function debitBills(amountOut) {
 let fullfill_order = async function (sessionId:string) {
     let tag = TAG + " | fullfill_order | "
     try {
-        log.debug("CURRENT_SESSION: ",CURRENT_SESSION)
+        log.info("CURRENT_SESSION: ",CURRENT_SESSION)
         if(!CURRENT_SESSION) throw Error("No session to fullfill!")
         if(CURRENT_SESSION.type === 'buy'){
+            //rate
+            let rate = (TOTAL_CASH / TOTAL_DAI)
+            log.info(tag,"TOTAL_CASH: ",TOTAL_CASH)
+            log.info(tag,"TOTAL_DAI: ",TOTAL_DAI)
+            log.info(tag,"rate: ",rate)
+            
+            log.info(tag,"CURRENT_SESSION: ",CURRENT_SESSION)
             if(CURRENT_SESSION.SESSION_FUNDING_USD === 0) throw Error("No session to fullfill!")
-            let amountOut = getQuoteForBuy(CURRENT_SESSION.SESSION_FUNDING_USD ?? 0)
-            log.debug(tag,"amountOut: ",amountOut)
+            let amountOut = getQuoteForBuy(CURRENT_SESSION.SESSION_FUNDING_USD)
+            log.info(tag,"amountOut: ",amountOut)
             //round to int
             let addressFullFill = CURRENT_SESSION.address
             let txid
@@ -884,48 +894,49 @@ let fullfill_order = async function (sessionId:string) {
             return txid
         }
         if(CURRENT_SESSION.type === 'sell'){
-            let amountOut = getQuoteForSellOfExactCryptoValue(CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0)
-            log.debug(tag,"amountOut: ",amountOut)
+            log.info("TOTAL_CASH,",TOTAL_CASH)
+            log.info(tag,"CURRENT_SESSION: ",CURRENT_SESSION)
+            let amountOut = CURRENT_SESSION.amountOut
+            log.info(tag,"amountOut: ",amountOut)
             amountOut = parseInt(amountOut.toString())
-            log.debug(tag,"amountOut (rounded): ",amountOut)
-            clear_session()
+            log.info(tag,"amountOut (rounded): ",amountOut)
             let txid = await payout_cash(amountOut.toString())
             if(WALLET_FAKE_BALANCES){
-                log.debug("dispensing fake bills!")
+                log.info("dispensing fake bills!")
                 //algo large to small
                 let isDespensing = true
 
                 let dispense = function(amountOut:number){
                     if(amountOut >= 100){
-                        log.debug("Dispensing 100$")
+                        log.info("Dispensing 100$")
                         ALL_BILLS[100] = ALL_BILLS[100] - 1
                         amountOut = amountOut - 100
                     } else if(amountOut >= 50){
-                        log.debug("Dispensing 50$")
+                        log.info("Dispensing 50$")
                         if(amountOut >= 50){
                             ALL_BILLS[50] = ALL_BILLS[50] - 1
                             amountOut = amountOut - 50
                         }
                     }else if(amountOut >= 20){
-                        log.debug("Dispensing 20$")
+                        log.info("Dispensing 20$")
                         if(amountOut >= 20){
                             ALL_BILLS[20] = ALL_BILLS[20] - 1
                             amountOut = amountOut - 20
                         }
                     } else if (amountOut >= 10){
-                        log.debug("Dispensing 10$")
+                        log.info("Dispensing 10$")
                         if(amountOut >= 10){
                             ALL_BILLS[10] = ALL_BILLS[10] - 1
                             amountOut = amountOut - 10
                         }
                     }else if (amountOut >= 5){
-                        log.debug("Dispensing 5")
+                        log.info("Dispensing 5")
                         if(amountOut >= 5){
                             ALL_BILLS[5] = ALL_BILLS[5] - 1
                             amountOut = amountOut - 5
                         }
                     }else if (amountOut >= 1){
-                        log.debug("Dispensing 1")
+                        log.info("Dispensing 1")
                         if(amountOut >= 1){
                             ALL_BILLS[1] = ALL_BILLS[1] - 1
                             amountOut = amountOut - 1
@@ -940,7 +951,7 @@ let fullfill_order = async function (sessionId:string) {
                         isDespensing = false
                     }
                 }
-                log.debug("Done dispensing")
+                log.info("Done dispensing")
             }
             if(!ATM_NO_HARDWARE){
                 await countBills()    
@@ -951,6 +962,7 @@ let fullfill_order = async function (sessionId:string) {
                 totalCash = totalCash + (parseInt(key) * ALL_BILLS[key]);
             });
             TOTAL_CASH = totalCash
+            log.info("TOTAL_CASH,",TOTAL_CASH)
             capTable.sync(TOTAL_CASH,TOTAL_DAI)
             pioneer.PushEvent({
                 type:"sessionFullFilledSell",
@@ -961,6 +973,7 @@ let fullfill_order = async function (sessionId:string) {
                 TOTAL_CASH,
                 TOTAL_DAI
             })
+            clear_session()
             return txid
         }
         if(CURRENT_SESSION.type === 'lpAdd' || CURRENT_SESSION.type === 'lpAddAsym'){
@@ -984,7 +997,7 @@ let fullfill_order = async function (sessionId:string) {
             //credit owner
             return "LP:ADD:TXID:PLACEHOLDER"
         }
-        if(CURRENT_SESSION.type === 'lpWithdraw' || CURRENT_SESSION.type === 'lpWithdrawAsym'){
+        if(CURRENT_SESSION.type === 'lpWithdraw'){
             log.debug("CURRENT_SESSION: ",CURRENT_SESSION)
             log.debug("address: ",CURRENT_SESSION.address)
             log.debug("amountOut: ",CURRENT_SESSION.amountOut)
@@ -1081,17 +1094,41 @@ let fullfill_order = async function (sessionId:string) {
             })
             return "LP:REMOVE:USD"+resultRemoval.dispenseUSD+":DAI"+resultRemoval.dispenseDAI+":TXID:PLACEHOLDER"
         }
-        // if(CURRENT_SESSION.type === 'lpWithdrawAsym'){
-        //     log.debug("CURRENT_SESSION: ",CURRENT_SESSION)
-        //     log.debug("SESSION_FUNDING_DAI: ",CURRENT_SESSION.amountOut)
-        //     //caluate LP tokens
-        //     let resultToken = await capTable.remove(CURRENT_SESSION.address,CURRENT_SESSION.SESSION_FUNDING_USD,CURRENT_SESSION.SESSION_FUNDING_DAI)
-        //     // let lpTokens = await calculate_lp_tokens(CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0,CURRENT_SESSION.CURRENT_SESSION.SESSION_FUNDING_USD ?? 0)
-        //     log.debug("resultToken: ",resultToken)
-        //     //credit owner
-        //
-        //     return "LP:REMOVE:TXID:PLACEHOLDER"
-        // }
+        if(CURRENT_SESSION.type === 'lpWithdrawAsym'){
+            log.info("TOTAL_CASH: ",TOTAL_CASH)
+            log.info("CURRENT_SESSION: ",CURRENT_SESSION)
+            log.info("amountOut: ",CURRENT_SESSION.percentage)
+            capTable.sync(TOTAL_CASH, TOTAL_DAI)
+            log.info("TOTAL VAULE PRE: ",TOTAL_CASH + TOTAL_DAI)
+            //caluate LP tokens
+            let {amountUSD, amountDAI} = await capTable.remove(CURRENT_SESSION.address,CURRENT_SESSION.percentage)
+            log.info("amountUSD: ",amountUSD)
+            log.info("amountDAI: ",amountDAI)
+            
+            //debit globals for LP removeal
+            TOTAL_CASH -= amountUSD;
+            TOTAL_DAI -= amountDAI;
+            log.info("TOTAL VAULE POST: ",TOTAL_CASH + TOTAL_DAI)
+            
+            //post debit
+            log.info("TOTAL_CASH: ",TOTAL_CASH)
+            log.info("TOTAL_DAI: ",TOTAL_DAI)
+            
+            //remove both from total (session is now funcded ready to be fullfilled)
+
+            //convert DAI to usd in session
+            const convertedDai = getQuoteForBuy(amountUSD);
+            log.info("convertedDai: ",convertedDai)
+            
+            //credit cash to cash
+            TOTAL_CASH = TOTAL_CASH + amountUSD
+
+            //send moniez
+            let totalDai = amountDAI + convertedDai
+            log.info("totalDai: ",totalDai)
+            capTable.sync(TOTAL_CASH, TOTAL_DAI)
+            return "LP:REMOVE:TXID:AMOUNT:"+totalDai
+        }
     } catch (e) {
         console.error(tag, "e: ", e)
         throw e
@@ -1400,6 +1437,7 @@ let get_status = async function () {
             session: CURRENT_SESSION,
             totalUsd: totalSelected,
             cash: ALL_BILLS,
+            lptokens:capTable.tokens(),
             cap
         }
         return output
@@ -1602,18 +1640,20 @@ let set_session_lp_withdraw_asym = async function (input) {
         //if buy intake address
         let sessionId = uuid.generate()
         let address = input.address
-        CURRENT_SESSION = {sessionId, address}
+        let amount = input.amount
+        CURRENT_SESSION = {sessionId, address, percentage:amount, type:"lpWithdrawAsym"}
         pioneer.PushEvent({
             type:"sessionCreateLpWithdraw",
             event:"user created a LP withdraw ASYM session sessionId: "+sessionId,
             address,
             sessionId,
+            amount,
             terminalName:TERMINAL_NAME,
             rate: TOTAL_CASH / TOTAL_DAI,
             TOTAL_CASH,
             TOTAL_DAI
         })
-        return currentSession
+        return CURRENT_SESSION
     } catch (e) {
         console.error(tag, "e: ", e)
         throw e

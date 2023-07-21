@@ -75,7 +75,7 @@ interface BodyLPAdd {
 }
 
 interface BodyLPWithdrawl {
-    amount: number,
+    amount: string,
     address:string
 }
 
@@ -570,10 +570,14 @@ export class IndexController extends Controller {
         let tag = TAG + " | createLpWithdrawAsym | "
         try{
             if(!body.address) throw Error("address is required!")
+            if(!body.amount) throw Error("amount is required!")
             let input  = {
-                address:body.address
+                address:body.address,
+                amount:body.amount
             }
-            let session = await Bankless.setSessionLpWithdrawAsym(input.address)
+            log.info(tag,"input: ",input)
+            let session = await Bankless.setSessionLpWithdrawAsym(input)
+            log.info(tag,"session: ",session)
             return session
         } catch(e){
             let errorResp:Error = {
