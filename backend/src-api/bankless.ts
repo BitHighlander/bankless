@@ -200,8 +200,9 @@ function getQuoteForRemoveLiquidity(usdOut: number): number {
 }
 
 let onStartAcceptor = async function(){
+    let tag = TAG  + " | onStartAcceptor | "
     try{
-        log.debug("onStartAcceptor")
+        log.info("onStartAcceptor")
         const channels = []
 
         const serialPortConfig = {
@@ -236,11 +237,12 @@ let onStartAcceptor = async function(){
 
 
         eSSP.on('OPEN', async () => {
-            //console.log('Port opened!')
+            log.info(tag,'Port opened!')
         })
 
         eSSP.on('CLOSE', async () => {
             //console.log('Port closed!')
+            log.info(tag,"port closed!")
         })
 
         eSSP.on('POLL', (x) => {
@@ -253,11 +255,11 @@ let onStartAcceptor = async function(){
         eSSP.on('READ_NOTE', async result => {
             if (result.channel === 0) return
             const channel = channels[result.channel - 1]
-            //console.log('READ_NOTE', channel)
+            log.info(tag,'READ_NOTE', channel)
 
-            // if (channel.value === 500) {
-            //   eSSP.command('REJECT_BANKNOTE')
-            // }
+            if (channel.value === 500) {
+              eSSP.command('REJECT_BANKNOTE')
+            }
         })
 
         eSSP.on('NOTE_REJECTED', async result => {
@@ -281,17 +283,19 @@ let onStartAcceptor = async function(){
         })
         let system = os.platform()
         log.debug("system: ",system)
+        log.info(tag,"USB_CONNECTION: ",USB_CONNECTION)
         await eSSP.open(USB_CONNECTION, serialPortConfig)
         await eSSP.command('SYNC')
         await eSSP.command('HOST_PROTOCOL_VERSION', { version: 6 })
-        //console.log('disabling payin')
+        log.info(tag,'disabling payin')
         await eSSP.disable()
 
-        //console.log('encryption init')
+        log.info('encryption init')
         await eSSP.initEncryption()
-        //console.log('SERIAL NUMBER:', (await eSSP.command('GET_SERIAL_NUMBER'))?.info?.serial_number)
+        log.info(tag,'SERIAL NUMBER:', (await eSSP.command('GET_SERIAL_NUMBER'))?.info?.serial_number)
 
         const setup_result = await eSSP.command('SETUP_REQUEST')
+        log.info(tag,'setup_result', setup_result)
         for (let i = 0; i < setup_result.info.channel_value.length; i++) {
             channels[i] = {
                 value: setup_result.info.expanded_channel_value[i] * setup_result.info.real_value_multiplier,
@@ -299,49 +303,49 @@ let onStartAcceptor = async function(){
             }
         }
 
-        //console.log('set channel inhibits')
+        log.info(tag,'set channel inhibits')
         await eSSP.command('SET_CHANNEL_INHIBITS', {
             channels: Array(channels.length).fill(1),
         })
 
-        //console.log('resetting routes')
+        log.info(tag,'resetting routes')
         const payoutDenoms = [100, 500, 1000, 2000, 5000, 10000]
         for (let i = 0; i < channels.length; i++) {
             const channel = channels[i]
-            // TODO: country code check
-            if (!payoutDenoms.includes(channel.value)) {
-                await eSSP.command('SET_DENOMINATION_ROUTE', {route: 'cashbox', value: channel.value, country_code: channel.country_code})
-            }
+            // @TODO: country code check
+            // if (!payoutDenoms.includes(channel.value)) {
+            //     await eSSP.command('SET_DENOMINATION_ROUTE', {route: 'cashbox', value: channel.value, country_code: channel.country_code})
+            // }
         }
         for (let i = 0; i < channels.length; i++) {
             const channel = channels[i]
-            // TODO: country code check
-            if (payoutDenoms.includes(channel.value)) {
-                await eSSP.command('SET_DENOMINATION_ROUTE', {route: 'payout', value: channel.value, country_code: channel.country_code})
-            }
+            // @TODO: country code check
+            // if (payoutDenoms.includes(channel.value)) {
+            //     await eSSP.command('SET_DENOMINATION_ROUTE', {route: 'payout', value: channel.value, country_code: channel.country_code})
+            // }
         }
 
-        //console.log('checking routes')
+        log.info(tag,'checking routes')
         for (const channel of channels) {
-            //console.log(channel, (await eSSP.command('GET_DENOMINATION_ROUTE', {value: channel.value, country_code: channel.country_code}))?.info)
+            log.info(tag,channel, (await eSSP.command('GET_DENOMINATION_ROUTE', {value: channel.value, country_code: channel.country_code}))?.info)
         }
 
-        //console.log('enable refill mode')
+        log.info(tag,'enable refill mode')
         await eSSP.command('SET_REFILL_MODE', { mode: 'on' })
 
-        // //console.log('enable payin')
+        // log.info(tag,'enable payin')
         // await eSSP.enable()
 
-        //console.log('enable payout')
+        log.info(tag,'enable payout')
         await eSSP.command('ENABLE_PAYOUT_DEVICE', {REQUIRE_FULL_STARTUP: false, GIVE_VALUE_ON_STORED: true})
 
-        //console.log('get levels')
+        log.info(tag,'get levels')
         if(!ATM_NO_HARDWARE){
             const levels = (await eSSP.command('GET_ALL_LEVELS'))?.info?.counter;
-            //console.log(levels)
+            log.info(tag,levels)
             for(let i = 0; i < levels.length; i++){
                 let level = levels[i]
-                //console.log('level: ', level)
+                log.info(tag,'level: ', level)
                 if(level.value == 100){
                     ALL_BILLS["1"] = level.denomination_level
                 }
@@ -373,15 +377,15 @@ let onStartAcceptor = async function(){
 }
 
 let countBills = async function(){
+    let tag =  TAG + " | countBills | "
     try{
-        //console.log()
-        //console.log('get levels')
+        log.info(tag,'get levels')
         const levels = (await eSSP.command('GET_ALL_LEVELS'))?.info?.counter;
-        //console.log(levels)
+        log.info(tag,levels)
 
         for(let i = 0; i < levels.length; i++){
             let level = levels[i]
-            //console.log('level: ', level)
+            log.info(tag,'level: ', level)
             if(level.value == 100){
                 ALL_BILLS["1"] = level.denomination_level
             }
@@ -488,7 +492,7 @@ let sub_for_payments = async function(){
                 firstStart = false
                 await sleep(3000)
             }catch(e){
-                //console.log("unable to scan, trying again")
+                log.info(tag,"unable to scan, trying again")
                 await sleep(3000)
             }
 
@@ -617,6 +621,7 @@ let onStart = async function (){
             sub_for_payments()
         }
         if(!ATM_NO_HARDWARE){
+            log.info("starting bill acceptor")
             onStartAcceptor()
         }
         //heartbeat
