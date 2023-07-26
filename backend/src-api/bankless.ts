@@ -11,102 +11,47 @@
 */
 
 const TAG = " | Bankless-Backend | "
+import { OrderTypes, Status, BuyOrder, SellOrder, LP } from './types';
 import axios from 'axios';
 const SspLib = require('@keepkey/encrypted-smiley-secure-protocol')
 const uuid = require('short-uuid');
 const log = require('@pioneer-platform/loggerdog')();
 const {subscriber, publisher, redis, redisQueue} = require('@pioneer-platform/default-redis')
+const database = require('./database');
 var geoip2 = require('geoip2-lite');
 let signer = require("eth_mnemonic_signer")
 let os = require("os")
 const Pioneer = require("@pioneer-platform/pioneer-client").default;
 import {getIPAddress} from "./utils"
 let Events = require("@pioneer-platform/pioneer-events")
+let blockbook = require("@pioneer-platform/blockbook")
 let capTable = require('./capTable')
 const fs = require('fs');
-
 let wait = require('wait-promise');
 let sleep = wait.sleep;
-
-let PIONEER_WS = process.env['PIONEER_WS'] || "wss://pioneers.dev"
-let URL_PIONEER_SPEC = process.env['URL_PIONEER_SPEC'] || "https://pioneers.dev/spec/swagger.json"
-
-let WALLET_MAIN = process.env['WALLET_MAIN']
-if(!WALLET_MAIN) throw Error("Missing WALLET_MAIN from ENV!")
-
-let TERMINAL_NAME = process.env['TERMINAL_NAME']
-if(!TERMINAL_NAME) throw Error("TERMINAL_NAME is required!")
-
-let QUERY_KEY = process.env['QUERY_KEY']
-if(!QUERY_KEY) throw Error("QUERY_KEY is required!")
-
-let NO_BROADCAST = process.env['WALLET_NO_BROADCAST']
-if(NO_BROADCAST) log.debug(" NERFED! wallet will not send crypto!")
-
-let WALLET_FAKE_PAYMENTS = process.env['WALLET_FAKE_PAYMENTS']
-if(WALLET_FAKE_PAYMENTS) log.debug(" WALLET_FAKE_PAYMENTS: will NOT pay crypto!")
-
-let WALLET_FAKE_BALANCES = process.env['WALLET_FAKE_BALANCES']
-if(WALLET_FAKE_BALANCES) log.debug(" WALLET_FAKE_BALANCES: will FAKE BALANCES!")
-
-let ATM_NO_HARDWARE = process.env['ATM_NO_HARDWARE']
-if(ATM_NO_HARDWARE) log.debug(" ATM_NO_HARDWARE: not attempting hardwware!")
-
-let USB_CONNECTION = process.env['USB_CONNECTION']
-if(!USB_CONNECTION) log.debug("USB_CONNECTION: REQUIRED!")
-
-// order types
-enum OrderTypes {
-    Buy,
-    Sell,
-    LP
-}
-
-enum Status {
-    created,
-    funded,
-    fullfilled ,
-}
-
-interface buyOrder {
-    orderId: string,
-    type: OrderTypes,
-    amountIn: number,
-    amountOut: number,
-    txid?: string,
-    assetId: string,
-    status: Status,
-}
-
-interface sellOrder {
-    orderId: string,
-    type: OrderTypes,
-    amountIn: number,
-    amountOut: number,
-    txid?: string,
-    assetId: string,
-    status: Status,
-}
-
-interface lp {
-    orderId: string,
-    type: OrderTypes,
-    amountFiat: number,
-    amountCrypto: number,
-    assetId: string,
-    status: Status,
-}
+//global config
+import {
+    PIONEER_WS,
+    URL_PIONEER_SPEC,
+    WALLET_MAIN,
+    TERMINAL_NAME,
+    QUERY_KEY,
+    NO_BROADCAST,
+    WALLET_FAKE_PAYMENTS,
+    WALLET_FAKE_BALANCES,
+    ATM_NO_HARDWARE,
+    USB_CONNECTION,
+    DAI_CONTRACT,
+    service
+} from './config';
 
 //STATE @TODO move this to DB?
 let balanceUSD = 0
 let balanceDAI = 0
 let currentSession:any //@TODO session must use session Types
 
-
 const Web3 = require("web3")
-let service = "https://mainnet.infura.io/v3/fb05c87983c4431baafd4600fd33de7e"
 let WEB3 = new Web3(new Web3.providers.HttpProvider(service))
-let DAI_CONTRACT = "0x6b175474e89094c44da98b954eedeac495271d0f"
 
 //pioneer
 let pioneer:any
@@ -145,6 +90,9 @@ Object.keys(ALL_BILLS).forEach(key => {
 TOTAL_CASH = totalCash
 capTable.sync(TOTAL_CASH, TOTAL_DAI)
 capTable.init()
+
+//
+let ethEvents
 
 //Global Session id. every time we shut down we audit reserves and create a new session!
 let GLOBAL_SESSION = "unset"
@@ -410,93 +358,216 @@ let countBills = async function(){
     }
 }
 
+/*
+{
+   "address":"0xC3aFFff54122658b89C31183CeC4F15514F34624",
+   "tx":{
+      "txid":"0x34d1e7542b63cfcfca5d79022dca32ca1338209b006b70c1084a9eda9074a715",
+      "vin":[
+         {
+            "n":0,
+            "addresses":[
+               "0x141D9959cAe3853b035000490C03991eB70Fc4aC"
+            ],
+            "isAddress":true
+         }
+      ],
+      "vout":[
+         {
+            "value":"0",
+            "n":0,
+            "addresses":[
+               "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+            ],
+            "isAddress":true
+         }
+      ],
+      "blockHeight":0,
+      "confirmations":0,
+      "blockTime":1690404034,
+      "value":"0",
+      "fees":"0",
+      "rbf":true,
+      "tokenTransfers":[
+         {
+            "type":"ERC20",
+            "from":"0x141D9959cAe3853b035000490C03991eB70Fc4aC",
+            "to":"0xC3aFFff54122658b89C31183CeC4F15514F34624",
+            "contract":"0x6B175474E89094C44Da98b954EedeAC495271d0F",
+            "name":"Dai Stablecoin",
+            "symbol":"DAI",
+            "decimals":18,
+            "value":"1000000000000000000"
+         }
+      ],
+      "ethereumSpecific":{
+         "status":-1,
+         "nonce":151,
+         "gasLimit":34706,
+         "gasPrice":"66531221484",
+         "data":"0xa9059cbb000000000000000000000000c3affff54122658b89c31183cec4f15514f346240000000000000000000000000000000000000000000000000de0b6b3a7640000"
+      }
+   }
+}
+*/
+
+let accept_payment = async function(payment:any){
+    try{
+        let txid = payment.txid
+        let from = payment.tx.tokenTransfers[0].from
+        let to = payment.tx.tokenTransfers[0].to
+        let amount = payment.tx.tokenTransfers[0].amount
+        let contract = payment.tx.tokenTransfers[0].contract
+        if(contract.toLowerCase() !== DAI_CONTRACT)throw Error("Incorrect token!")
+
+        //if to main address
+        //if in session
+        if(CURRENT_SESSION){
+            //Payment found!
+            publisher.publish("payments",JSON.stringify(payment))
+            fullfill_order(CURRENT_SESSION.sessionId)
+        }
+    }catch(e){
+        log.error(e)
+    }
+}
+
+let get_new_address = async function(orderId:string){
+    let tag = " | get_new_address | "
+    try{
+        //derive new address
+        let index = await database.getNextIndex()
+        log.info("index: ",index)
+        index = index + 1
+        let path = "m/44'/60'/"+index+"'/0/0"
+        let address = await signer.getAddress(WALLET_MAIN,path)
+        log.info("address: ",address)
+
+        //save
+        let saveResult = await database.addNewAddress(address, orderId)
+        log.info("saveResult: ",saveResult)
+
+        //sub to payments
+        ethEvents.subscribeAddresses([address], async function(payment:any){
+            log.info(tag,"payment: ",payment)
+            log.info(tag,"payment: ",JSON.stringify(payment))
+            accept_payment(payment)
+        })
+
+    }catch(e){
+        log.error(e)
+    }
+}
 let sub_for_payments = async function(){
     let tag = " | sub_for_payments | "
     try{
         let address = await signer.getAddress(WALLET_MAIN)
-        log.debug(tag,"address: ",address)
-
-        //let first start
-        let firstStart = true
-        let isScanning = true
-        while(isScanning){
-            log.debug(tag,"scanning...")
-            let url = "https://indexer.ethereum.shapeshift.com"+"/api/v2/address/"+address+"?details=all"
-            let body = {
-                method: 'GET',
-                url,
-                headers: {
-                    'content-type': 'application/json'
-                },
-            };
-            try{
-                let resp = await axios(body)
-                if(!resp.data) return
-                if(!resp.data.txids) return
-                let txids = resp.data.txids
-                for(let i = 0; i < txids.length; i++){
-                    let txid = txids[i]
-                    //log.debug("txid: ",txid)
-                    if(CURRENT_SESSION && !TXIDS_REVIEWED.some(e => e.txid === txid)){
-                        let url = "https://indexer.ethereum.shapeshift.com"+"/api/v2/tx/"+txid
-                        let body = {
-                            method: 'GET',
-                            url,
-                            headers: {
-                                'content-type': 'application/json'
-                            },
-                        };
-                        let respTx = await axios(body)
-                        let paymentAmountDai = 0
-                        for(let i = 0; i < respTx.data.tokenTransfers.length; i++){
-                            let transfer = respTx.data.tokenTransfers[i]
-                            if(transfer["symbol"] == "DAI" && transfer.contract.toLowerCase() === DAI_CONTRACT){
-                                paymentAmountDai = parseInt(transfer.value) / 1000000000000000000
-                                CURRENT_SESSION.SESSION_FUNDING_DAI = (CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0) + paymentAmountDai
-                            }
-                        }
-                        log.debug("paymentAmountDai: ",paymentAmountDai)
-                        log.debug("SESSION_FUNDING_DAI: ",CURRENT_SESSION.SESSION_FUNDING_DAI)
-                        let payment = {
-                            txid:txids[i],
-                            asset:"DAI",
-                            session:CURRENT_SESSION.sessionId,
-                            amount:paymentAmountDai,
-                            funded:true,
-                            fullfilled:false
-                        }
-                        TXIDS_REVIEWED.push(payment)
-                        //Payment found!
-                        publisher.publish("payments",JSON.stringify(payment))
-                        fullfill_order(CURRENT_SESSION.sessionId)
-                    } else if(!TXIDS_REVIEWED.some(e => e.txid === txid) && !firstStart){
-                        log.debug(tag,"payment outside session!")
-                        log.debug(tag,"payment: !")
-                        let payment = {
-                            txid:txids[i],
-                            session:"none",
-                            status:"missed"
-                        }
-                        TXIDS_REVIEWED.push(payment)
-                    } else if(firstStart){
-                        let payment = {
-                            txid:txids[i],
-                            session:"none",
-                            status:"ignored"
-                        }
-                        TXIDS_REVIEWED.push(payment)
-                    }
-                }
-
-
-                firstStart = false
-                await sleep(3000)
-            }catch(e){
-                log.info(tag,"unable to scan, trying again")
-                await sleep(3000)
+        log.info(tag,"address: ",address)
+        let servers = [
+            {
+                symbol:"ETH",
+                blockchain:"ethereum",
+                caip:"eip155:1/slip44:60",
+                type:"blockbook",
+                service:"https://indexer.ethereum.shapeshift.com",
+                websocket:"wss://indexer.ethereum.shapeshift.com/websocket"
             }
-
-        }
+        ]
+        //sub to main address
+        await blockbook.init(servers)
+        let allSockets = blockbook.getBlockbookSockets()
+        ethEvents = allSockets.ETH
+        await ethEvents.connect()
+        
+        // ethEvents.subscribeAddresses([address], ({ address, tx }) => console.log('new tx for address', address, tx))
+        ethEvents.subscribeAddresses([address], async function(payment:any){
+            log.info(tag,"payment: ",payment)
+            log.info(tag,"payment: ",JSON.stringify(payment))
+            accept_payment(payment)
+        })
+        
+        
+        
+        //let first start
+        // let firstStart = true
+        // let isScanning = true
+        // while(isScanning){
+        //     log.debug(tag,"scanning...")
+        //     let url = "https://indexer.ethereum.shapeshift.com"+"/api/v2/address/"+address+"?details=all"
+        //     let body = {
+        //         method: 'GET',
+        //         url,
+        //         headers: {
+        //             'content-type': 'application/json'
+        //         },
+        //     };
+        //     try{
+        //         let resp = await axios(body)
+        //         if(!resp.data) return
+        //         if(!resp.data.txids) return
+        //         let txids = resp.data.txids
+        //         for(let i = 0; i < txids.length; i++){
+        //             let txid = txids[i]
+        //             //log.debug("txid: ",txid)
+        //             if(CURRENT_SESSION && !TXIDS_REVIEWED.some(e => e.txid === txid)){
+        //                 let url = "https://indexer.ethereum.shapeshift.com"+"/api/v2/tx/"+txid
+        //                 let body = {
+        //                     method: 'GET',
+        //                     url,
+        //                     headers: {
+        //                         'content-type': 'application/json'
+        //                     },
+        //                 };
+        //                 let respTx = await axios(body)
+        //                 let paymentAmountDai = 0
+        //                 for(let i = 0; i < respTx.data.tokenTransfers.length; i++){
+        //                     let transfer = respTx.data.tokenTransfers[i]
+        //                     if(transfer["symbol"] == "DAI" && transfer.contract.toLowerCase() === DAI_CONTRACT){
+        //                         paymentAmountDai = parseInt(transfer.value) / 1000000000000000000
+        //                         CURRENT_SESSION.SESSION_FUNDING_DAI = (CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0) + paymentAmountDai
+        //                     }
+        //                 }
+        //                 log.debug("paymentAmountDai: ",paymentAmountDai)
+        //                 log.debug("SESSION_FUNDING_DAI: ",CURRENT_SESSION.SESSION_FUNDING_DAI)
+        //                 let payment = {
+        //                     txid:txids[i],
+        //                     asset:"DAI",
+        //                     session:CURRENT_SESSION.sessionId,
+        //                     amount:paymentAmountDai,
+        //                     funded:true,
+        //                     fullfilled:false
+        //                 }
+        //                 TXIDS_REVIEWED.push(payment)
+        //                 //Payment found!
+        //                 publisher.publish("payments",JSON.stringify(payment))
+        //                 fullfill_order(CURRENT_SESSION.sessionId)
+        //             } else if(!TXIDS_REVIEWED.some(e => e.txid === txid) && !firstStart){
+        //                 log.debug(tag,"payment outside session!")
+        //                 log.debug(tag,"payment: !")
+        //                 let payment = {
+        //                     txid:txids[i],
+        //                     session:"none",
+        //                     status:"missed"
+        //                 }
+        //                 TXIDS_REVIEWED.push(payment)
+        //             } else if(firstStart){
+        //                 let payment = {
+        //                     txid:txids[i],
+        //                     session:"none",
+        //                     status:"ignored"
+        //                 }
+        //                 TXIDS_REVIEWED.push(payment)
+        //             }
+        //         }
+        //
+        //
+        //         firstStart = false
+        //         await sleep(3000)
+        //     }catch(e){
+        //         log.info(tag,"unable to scan, trying again")
+        //         await sleep(3000)
+        //     }
+        // }
     }catch(e){
         console.error(e)
     }
@@ -526,24 +597,18 @@ let onStart = async function (){
             try{
                 // log.debug(tag,"event: ",event)
                 // log.debug(tag,"event: ",event.payload)
-                if(event.payload && event.payload.type == "lpAddAsym"){
+                
+                //create new address for session
+
+                if(event.payload && event.payload.type == "lpAddAsym" || event.payload.type == "lpAddSym"){
                     if(!event.payload.address) throw Error("invalid session proposial! required address of LP owner!")
-                    let session = await set_session_lp_add_asym(event.payload)
-                    log.debug(tag,"session: ",session)
-                    let payload = event.payload
-                    log.debug(tag,"payload: ",payload)
-                    payload.sessionId = session.sessionId
-                    payload.address = await signer.getAddress(WALLET_MAIN)
-                    clientEvents.send('message', payload)
-                }else if(event.type == "lpWithdrawAsym"){
-                    let session = await set_session_lp_withdraw_asym(event.payload)
-                    log.debug(tag,"session: ",session)
-                    let payload = event.payload
-                    log.debug(tag,"payload: ",payload)
-                    payload.sessionId = session.sessionId
-                    payload.address = await signer.getAddress(WALLET_MAIN)
-                    clientEvents.send('message', payload)
-                }    
+                    let sessionId = uuid.generate()
+                    log.info(tag,"sessionId: ",sessionId)
+                    let address =  await get_new_address(sessionId)
+                    log.info(tag,"address: ",address)
+                    //save session
+                    
+                }
             }catch(e){
                 log.error(e)
             }
@@ -816,7 +881,6 @@ let onStartSession = async function(){
         console.error(e)
     }
 }
-onStartSession()
 
 //@TODO move me to module
 //debit bills
@@ -1436,6 +1500,7 @@ let get_status = async function () {
         let output:any = {
             billacceptor: ACCEPTOR_ONLINE ? "online" : "offline",
             hotwallet:"online",
+            address: await signer.getAddress(WALLET_MAIN),
             balanceUSD: totalSelected, //TODO get this from hardware
             balanceDAI: TOTAL_DAI, //TODO get this from hotwallet
             rate: TOTAL_CASH / TOTAL_DAI,

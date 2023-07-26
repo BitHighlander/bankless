@@ -21,6 +21,7 @@ const Home = () => {
   const [showStats, setShowStats] = useState(null);
   const [started, setIsStarted] = useState(false);
   const [lockTabs, setLockTabs] = useState(false);
+  const [sessionId, setSessionId] = useState(false);
 
   const startSession = async function () {
     try {
@@ -69,21 +70,21 @@ const Home = () => {
 
           <TabPanels>
               <TabPanel>
-                  <Onramp setLockTabs={setLockTabs} />
+                  <Onramp sessionId={sessionId} setLockTabs={setLockTabs} />
               </TabPanel>
               <TabPanel>
-                  <Offramp setLockTabs={setLockTabs} />
+                  <Offramp sessionId={sessionId} setLockTabs={setLockTabs} />
               </TabPanel>
               {/*<TabPanel>*/}
               {/*    <LP setLockTabs={setLockTabs} />*/}
               {/*</TabPanel>*/}
               <TabPanel>
-                  <Status setLockTabs={setLockTabs} />
+                  <Status />
               </TabPanel>
           </TabPanels>
         </Tabs>
       </div>) : (
-          <div align='center'>
+          <div>
         <Button colorScheme='green' size='lg' alignSelf="center" onClick={startSession}>Start</Button>
       </div>
       )}

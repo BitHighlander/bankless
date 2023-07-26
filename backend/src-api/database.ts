@@ -4,7 +4,7 @@ const sqlite3 = require('sqlite3').verbose();
 // Create a new SQLite database
 const db = new sqlite3.Database('sessions.db');
 
-// Create the sessions and capTable tables if they don't exist
+// Create the sessions, capTable, and addressIndex tables if they don't exist
 db.serialize(() => {
     db.run(`
     CREATE TABLE IF NOT EXISTS sessions (
@@ -20,6 +20,14 @@ db.serialize(() => {
       address TEXT NOT NULL,
       lpTokens REAL NOT NULL,
       percentage REAL NOT NULL
+    )
+  `);
+
+    db.run(`
+    CREATE TABLE IF NOT EXISTS addressIndex (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      address TEXT NOT NULL,
+      \`sessionId\` TEXT NOT NULL
     )
   `);
 });
@@ -143,6 +151,46 @@ function getAllCapEntries() {
     });
 }
 
+// Function to add a new address to the addressIndex with sessionId
+function addNewAddress(address, sessionId) {
+    return new Promise<void>((resolve, reject) => {
+        db.run(
+            'INSERT INTO addressIndex (address, `sessionId`) VALUES (?, ?)',
+            [address, sessionId],
+            function (err) {
+                if (err) {
+                    console.error('Error adding new address:', err.message);
+                    reject(err);
+                } else {
+                    console.log('New address added successfully with ID:', this.lastID);
+                    resolve();
+                }
+            }
+        );
+    });
+}
+
+// Function to get the next index from the addressIndex
+function getNextIndex() {
+    return new Promise<number>((resolve, reject) => {
+        db.get(
+            'SELECT id FROM addressIndex ORDER BY id DESC LIMIT 1',
+            function (err, row) {
+                if (err) {
+                    console.error('Error retrieving next index:', err.message);
+                    reject(err);
+                } else {
+                    if (row) {
+                        resolve(row.id + 1);
+                    } else {
+                        resolve(1); // If no entries exist, start with index 1
+                    }
+                }
+            }
+        );
+    });
+}
+
 // Export the functions
 module.exports = {
     storeSession,
@@ -151,4 +199,6 @@ module.exports = {
     updateCapitalEntry,
     deleteCapitalEntry,
     getAllCapEntries,
+    addNewAddress,
+    getNextIndex,
 };
