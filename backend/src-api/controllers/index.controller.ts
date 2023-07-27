@@ -75,7 +75,7 @@ interface BodyLPAdd {
 }
 
 interface BodyLPWithdrawl {
-    amount: number,
+    amount: string,
     address:string
 }
 
@@ -227,7 +227,6 @@ export class IndexController extends Controller {
         push address
 
     */
-
     @Get('/push/address/:address')
     public async pushAddress(address:string) {
         let tag = TAG + " | pushAddress | "
@@ -248,6 +247,46 @@ export class IndexController extends Controller {
         }
     }
 
+    /*
+    start Acceptor
+     */
+    @Get('/startAcceptor')
+    public async startAcceptor() {
+        let tag = TAG + " | startAcceptor | "
+        try{
+            Bankless.startAcceptor()
+            return(true)
+        }catch(e){
+            let errorResp:Error = {
+                success:false,
+                tag,
+                e
+            }
+            log.error(tag,"e: ",{errorResp})
+            throw new ApiError("error",503,"error: "+e.toString());
+        }
+    }
+
+    /*
+    Stop Acceptor
+     */
+    @Get('/stopAcceptor')
+    public async stopAcceptor() {
+        let tag = TAG + " | stopAcceptor | "
+        try{
+            Bankless.stopAcceptor()
+            return(true)
+        }catch(e){
+            let errorResp:Error = {
+                success:false,
+                tag,
+                e
+            }
+            log.error(tag,"e: ",{errorResp})
+            throw new ApiError("error",503,"error: "+e.toString());
+        }
+    }
+    
     /*
     * HACK DEPOSIT
     *
@@ -531,10 +570,14 @@ export class IndexController extends Controller {
         let tag = TAG + " | createLpWithdrawAsym | "
         try{
             if(!body.address) throw Error("address is required!")
+            if(!body.amount) throw Error("amount is required!")
             let input  = {
-                address:body.address
+                address:body.address,
+                amount:body.amount
             }
-            let session = await Bankless.setSessionLpWithdrawAsym(input.address)
+            log.info(tag,"input: ",input)
+            let session = await Bankless.setSessionLpWithdrawAsym(input)
+            log.info(tag,"session: ",session)
             return session
         } catch(e){
             let errorResp:Error = {

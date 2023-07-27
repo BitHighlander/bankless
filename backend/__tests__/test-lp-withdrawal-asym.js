@@ -11,10 +11,11 @@ let run_test = async () => {
 
         //start session
         const bodyCreate = {
-            address: "0xC3aFFff54122658b89C31183CeC4F15514F34624",
+            amount: "10",
+            address: "0x651982e85D5E43db682cD6153488083e1b810798",
         };
         let respCreate = await axios.post(
-            "http://127.0.0.1:4000/api/v1/create/lpAddAsym",
+            "http://127.0.0.1:4000/api/v1/create/lpWithdrawAsym",
             bodyCreate
         );
         respCreate = respCreate.data
@@ -30,18 +31,18 @@ let run_test = async () => {
         console.log("status: ",status)
 
         //fullfill
-        const bodyFullfill = {
-            amount:status.session.SESSION_FUNDING_DAI,
-            sessionId:status.session.sessionId
-        };
-        console.log("bodyFullfill: ",bodyFullfill)
-        let respFullfill = await axios.post(
-            "http://127.0.0.1:4000/api/v1/fullfill",
-            bodyFullfill
-        );
-        respFullfill = respFullfill.data
-        // eslint-disable-next-line no-console
-        console.log("respFullfill: ", respFullfill);
+        // const bodyFullfill = {
+        //     amount:status.session.SESSION_FUNDING_DAI,
+        //     sessionId:status.session.sessionId
+        // };
+        // console.log("bodyFullfill: ",bodyFullfill)
+        // let respFullfill = await axios.post(
+        //     "http://127.0.0.1:4000/api/v1/fullfill",
+        //     bodyFullfill
+        // );
+        // respFullfill = respFullfill.data
+        // // eslint-disable-next-line no-console
+        // console.log("respFullfill: ", respFullfill);
 
 
         //get crypto info
