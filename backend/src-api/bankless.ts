@@ -89,7 +89,7 @@ Object.keys(ALL_BILLS).forEach(key => {
 });
 TOTAL_CASH = totalCash
 capTable.sync(TOTAL_CASH, TOTAL_DAI)
-capTable.init()
+
 
 //
 let ethEvents
@@ -358,74 +358,45 @@ let countBills = async function(){
     }
 }
 
-/*
-{
-   "address":"0xC3aFFff54122658b89C31183CeC4F15514F34624",
-   "tx":{
-      "txid":"0x34d1e7542b63cfcfca5d79022dca32ca1338209b006b70c1084a9eda9074a715",
-      "vin":[
-         {
-            "n":0,
-            "addresses":[
-               "0x141D9959cAe3853b035000490C03991eB70Fc4aC"
-            ],
-            "isAddress":true
-         }
-      ],
-      "vout":[
-         {
-            "value":"0",
-            "n":0,
-            "addresses":[
-               "0x6B175474E89094C44Da98b954EedeAC495271d0F"
-            ],
-            "isAddress":true
-         }
-      ],
-      "blockHeight":0,
-      "confirmations":0,
-      "blockTime":1690404034,
-      "value":"0",
-      "fees":"0",
-      "rbf":true,
-      "tokenTransfers":[
-         {
-            "type":"ERC20",
-            "from":"0x141D9959cAe3853b035000490C03991eB70Fc4aC",
-            "to":"0xC3aFFff54122658b89C31183CeC4F15514F34624",
-            "contract":"0x6B175474E89094C44Da98b954EedeAC495271d0F",
-            "name":"Dai Stablecoin",
-            "symbol":"DAI",
-            "decimals":18,
-            "value":"1000000000000000000"
-         }
-      ],
-      "ethereumSpecific":{
-         "status":-1,
-         "nonce":151,
-         "gasLimit":34706,
-         "gasPrice":"66531221484",
-         "data":"0xa9059cbb000000000000000000000000c3affff54122658b89c31183cec4f15514f346240000000000000000000000000000000000000000000000000de0b6b3a7640000"
-      }
-   }
-}
-*/
-
 let accept_payment = async function(payment:any){
+    let tag = TAG + " | accept_payment | "
     try{
-        let txid = payment.txid
+        let txid = payment.tx.txid
         let from = payment.tx.tokenTransfers[0].from
         let to = payment.tx.tokenTransfers[0].to
-        let amount = payment.tx.tokenTransfers[0].amount
+        let amount = payment.tx.tokenTransfers[0].value / 10**18
         let contract = payment.tx.tokenTransfers[0].contract
         if(contract.toLowerCase() !== DAI_CONTRACT)throw Error("Incorrect token!")
-
-        //if to main address
-        //if in session
-        if(CURRENT_SESSION){
-            //Payment found!
+        log.info(tag,"params: ",{
+            txid,
+            from,
+            to,
+            amount,
+            contract
+        })
+        //find session for this address
+        let session = await database.getSessionByAddress(to)
+        log.info("session: ",session)
+        if(session){
+            session.sessionId = session.session_id
+            session.txid = txid
+            session.amount = amount
+            session.amountIn = amount
+            // await database.updateSession(session)
+            CURRENT_SESSION = session
+            log.info("CURRENT_SESSION: ",CURRENT_SESSION)
+            await credit_session({
+                sessionId: session.sessionId,
+                amount: amount,
+                asset: "DAI",
+            })
             publisher.publish("payments",JSON.stringify(payment))
-            fullfill_order(CURRENT_SESSION.sessionId)
+            let result = await fullfill_order(session.sessionId)   
+            log.info("result: ",result)
+            log.info("CURRENT_SESSION: ",CURRENT_SESSION)
+            await database.updateSession(session)
+        } else {
+            log.error(tag,"no session found for address: ",to)
         }
     }catch(e){
         log.error(e)
@@ -453,7 +424,7 @@ let get_new_address = async function(orderId:string){
             log.info(tag,"payment: ",JSON.stringify(payment))
             accept_payment(payment)
         })
-
+        return address
     }catch(e){
         log.error(e)
     }
@@ -607,7 +578,13 @@ let onStart = async function (){
                     let address =  await get_new_address(sessionId)
                     log.info(tag,"address: ",address)
                     //save session
-                    
+                    let payload = event.payload
+                    payload.sessionId = sessionId
+                    payload.depositAddress = address
+                    let storeSuccess = await database.storeSession(sessionId,payload)
+                    log.info(tag,"payload: ",payload)
+                    if(!payload.address) throw Error("Failed to generate address!")
+                    clientEvents.send('message', payload)
                 }
             }catch(e){
                 log.error(e)
@@ -735,6 +712,15 @@ module.exports = {
     poolInfo: async function () {
         return get_pool_info();
     },
+    getSession: async function (sessionId:string) {
+        return database.getSession(sessionId);
+    },
+    getSessions: async function (limit:number,skip:number) {
+        return database.getAllSessions(limit,skip);
+    },
+    getSessionByAddress: async function (address:string) {
+        return database.getSessionByAddress(address);
+    },
     startSession: async function (input:any) {
         return start_session(input);
     },
@@ -758,6 +744,9 @@ module.exports = {
     },
     credit: async function (input:any) {
         return credit_session(input);
+    },
+    pushPayment: async function (payment:any) {
+        return accept_payment(payment);
     },
     payments: async function () {
         return TXIDS_REVIEWED;
@@ -871,12 +860,13 @@ let onStartSession = async function(){
         //@TODO if diff record it
 
         //start session
-        log.debug(tag,"TOTAL_CASH: ",TOTAL_CASH)
-        log.debug(tag,"TOTAL_DAI: ",TOTAL_DAI)
+        log.info(tag,"TOTAL_CASH: ",TOTAL_CASH)
+        log.info(tag,"TOTAL_DAI: ",TOTAL_DAI)
 
         //get LP owners
 
-
+        capTable.sync(TOTAL_CASH, TOTAL_DAI)
+        capTable.init()
     }catch(e){
         console.error(e)
     }
@@ -1498,6 +1488,7 @@ let get_status = async function () {
         });
         let cap = await capTable.get()
         let output:any = {
+            terminalName: TERMINAL_NAME,
             billacceptor: ACCEPTOR_ONLINE ? "online" : "offline",
             hotwallet:"online",
             address: await signer.getAddress(WALLET_MAIN),

@@ -222,6 +222,71 @@ export class IndexController extends Controller {
         }
     }
 
+    @Get('/session/:sessionId')
+    public async getSession(sessionId: string) {
+        const tag = TAG + ' | getSession | ';
+        try {
+            log.info(tag, 'Fetching session with sessionId:', sessionId);
+
+            // Assuming Bankless.sessions(limit, skip) fetches sessions with the specified limit and skip values
+            const sessions = await Bankless.getSession(sessionId);
+
+            // Return the fetched sessions
+            return sessions;
+        } catch (e) {
+            const errorResp: Error = {
+                success: false,
+                tag,
+                e,
+            };
+            log.error(tag, 'e: ', { errorResp });
+            throw new ApiError('error', 503, 'Error while fetching sessions: ' + e.toString());
+        }
+    }
+
+    @Get('/session/:address')
+    public async getSessionByAddress(address: string) {
+        const tag = TAG + ' | getSessionByAddress | ';
+        try {
+            log.info(tag, 'Fetching session with address:', address);
+
+            // Assuming Bankless.sessions(limit, skip) fetches sessions with the specified limit and skip values
+            const sessions = await Bankless.getSessionByAddress(address);
+
+            // Return the fetched sessions
+            return sessions;
+        } catch (e) {
+            const errorResp: Error = {
+                success: false,
+                tag,
+                e,
+            };
+            log.error(tag, 'e: ', { errorResp });
+            throw new ApiError('error', 503, 'Error while fetching sessions: ' + e.toString());
+        }
+    }
+    
+    @Get('/sessions/:limit/:skip')
+    public async getSessions(limit: number, skip: number) {
+        const tag = TAG + ' | getSessions | ';
+        try {
+            log.info(tag, 'Fetching sessions with limit:', limit, 'and skip:', skip);
+
+            // Assuming Bankless.sessions(limit, skip) fetches sessions with the specified limit and skip values
+            const sessions = await Bankless.getSessions(limit, skip);
+
+            // Return the fetched sessions
+            return sessions;
+        } catch (e) {
+            const errorResp: Error = {
+                success: false,
+                tag,
+                e,
+            };
+            log.error(tag, 'e: ', { errorResp });
+            throw new ApiError('error', 503, 'Error while fetching sessions: ' + e.toString());
+        }
+    }
 
     /*
         push address
@@ -339,6 +404,31 @@ export class IndexController extends Controller {
         }
     }
 
+    /*
+    * Payments
+    *
+    * */
+    @Post('/push/payment')
+    public async payment(@Body() body: any): Promise<any> {
+        let tag = TAG + " | payment | "
+        try{
+            // if(!body.amount) throw Error("missing amount!")
+            // if(!body.asset) throw Error("missing asset!")
+            // if(!body.sessionId) throw Error("missing sessionId!")
+
+            let result = await Bankless.pushPayment(body)
+            return result
+        } catch(e){
+            let errorResp:Error = {
+                success:false,
+                tag,
+                e
+            }
+            log.error(tag,"e: ",{errorResp})
+            throw new ApiError("error",503,"error: "+e.toString());
+        }
+    }
+    
     /*
     * HACK DEPOSIT
     *
