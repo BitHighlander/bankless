@@ -1251,15 +1251,15 @@ const credit_session = async function (input) {
 let payout_cash = async function (amount:string) {
     let tag = TAG + " | payout_cash | "
     try {
-        log.debug(tag,"Paying out cash!: ",amount)
+        log.info(tag,"Paying out cash!: ",amount)
         if(NO_BROADCAST){
             log.debug("NO_BROADCAST set not paying")
             return "paied bro"
         } else{
             amount = amount.toString()
             if(amount === "0") amount = "1" //@TODO WTF WTY
-            log.debug("paying out cash: ",amount)
-            log.debug("paying out cash: ",typeof(amount))
+            log.debug(tag,"paying out cash: ",amount)
+            log.debug(tag,"paying out cash: ",typeof(amount))
 
             //verify
             if(!ATM_NO_HARDWARE){
@@ -1269,7 +1269,7 @@ let payout_cash = async function (amount:string) {
                     country_code: 'USD',
                     test: false,
                 })
-                log.debug("result: ",result)
+                log.info(tag,"result: ",result)
                 await dispensed    
             }
         }
