@@ -363,7 +363,7 @@ let accept_payment = async function(payment:any){
     try{
         let txid = payment.tx.txid
         let from = payment.tx.tokenTransfers[0].from
-        let to = payment.tx.tokenTransfers[0].to
+        let to = payment.tx.tokenTransfers[0].to.toLowerCase()
         let amount = payment.tx.tokenTransfers[0].value / 10**18
         let contract = payment.tx.tokenTransfers[0].contract
         if(contract.toLowerCase() !== DAI_CONTRACT)throw Error("Incorrect token!")
@@ -375,7 +375,7 @@ let accept_payment = async function(payment:any){
             contract
         })
         //find session for this address
-        let session = await database.getSessionByAddress(to)
+        let session = await database.getSessionByAddressOwner(to)
         log.info("session: ",session)
         if(session){
             session.sessionId = session.session_id
@@ -394,7 +394,7 @@ let accept_payment = async function(payment:any){
             let result = await fullfill_order(session.sessionId)   
             log.info("result: ",result)
             log.info("CURRENT_SESSION: ",CURRENT_SESSION)
-            await database.updateSession(session)
+            // await database.updateSession(session)
         } else {
             log.error(tag,"no session found for address: ",to)
         }
@@ -412,6 +412,7 @@ let get_new_address = async function(orderId:string){
         index = index + 1
         let path = "m/44'/60'/"+index+"'/0/0"
         let address = await signer.getAddress(WALLET_MAIN,path)
+        address = address.toLowerCase()
         log.info("address: ",address)
 
         //save
@@ -451,12 +452,12 @@ let sub_for_payments = async function(){
         await ethEvents.connect()
         
         // ethEvents.subscribeAddresses([address], ({ address, tx }) => console.log('new tx for address', address, tx))
-        ethEvents.subscribeAddresses([address], async function(payment:any){
+        let resultSub = await ethEvents.subscribeAddresses([address], async function(payment:any){
             log.info(tag,"payment: ",payment)
             log.info(tag,"payment: ",JSON.stringify(payment))
             accept_payment(payment)
         })
-        
+        log.info(tag,"resultSub: ",resultSub)
         
         
         //let first start
@@ -567,7 +568,7 @@ let onStart = async function (){
             let tag = TAG + " | events | "
             try{
                 // log.debug(tag,"event: ",event)
-                // log.debug(tag,"event: ",event.payload)
+                log.info(tag,"event: ",event.payload)
                 
                 //create new address for session
 
@@ -580,11 +581,33 @@ let onStart = async function (){
                     //save session
                     let payload = event.payload
                     payload.sessionId = sessionId
+                    payload.owner = event.payload.address
                     payload.depositAddress = address
                     let storeSuccess = await database.storeSession(sessionId,payload)
-                    log.info(tag,"payload: ",payload)
+                    log.info(tag,"storeSuccess: ",storeSuccess)
                     if(!payload.address) throw Error("Failed to generate address!")
                     clientEvents.send('message', payload)
+                }
+                if(event.payload && event.payload.type == "lpWithdrawAsym" || event.payload.type == "lpWithdraw"){
+                    log.info(tag,"lpWithdrawAsym: ")
+                    if(!event.payload.address) throw Error("invalid session proposial! required address of LP owner!")
+                    let session = await database.getSessionByAddressOwner(event.payload.address)
+                    log.info(tag,"session: ",session)
+                    if(session){
+                        let input = {
+                            address:event.payload.address,
+                            amount:event.payload.amount
+                        }
+                        let session = await set_session_lp_withdraw_asym(input)
+                        log.info(tag,"session: ",session)
+                        //TODO validate signature
+                        
+                        //fullfill
+                        let fullfill = await fullfill_order(session.sessionId)
+                        log.info(tag,"fullfill: ",fullfill)
+                        session.txid = fullfill
+                        clientEvents.send('message', session)
+                    }
                 }
             }catch(e){
                 log.error(e)
@@ -608,7 +631,7 @@ let onStart = async function (){
         pioneer = new Pioneer(configPioneer.spec, configPioneer);
         pioneer = await pioneer.init();
         let terminalInfo = await pioneer.TerminalPrivate({terminalName:TERMINAL_NAME})
-        log.info(tag,"terminalInfo: ",terminalInfo.data)
+        log.debug(tag,"terminalInfo: ",terminalInfo.data)
         //check total cash
         let totalCash = 0;
         Object.keys(ALL_BILLS).forEach(key => {
@@ -718,8 +741,11 @@ module.exports = {
     getSessions: async function (limit:number,skip:number) {
         return database.getAllSessions(limit,skip);
     },
-    getSessionByAddress: async function (address:string) {
-        return database.getSessionByAddress(address);
+    getSessionByAddressDeposit: async function (address:string) {
+        return database.getSessionByAddressDeposit(address);
+    },
+    getSessionByAddressOwner: async function (address:string) {
+        return database.getSessionByAddressOwner(address);
     },
     startSession: async function (input:any) {
         return start_session(input);

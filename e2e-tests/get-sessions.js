@@ -1,5 +1,5 @@
-
-
+require("dotenv").config()
+require("dotenv").config({path:'./.env'})
 const Bankless = require("@pioneer-platform/pioneer-client").default;
 
 let spec = "http://127.0.0.1:4000/spec/swagger.json"

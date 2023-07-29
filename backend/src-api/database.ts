@@ -296,7 +296,7 @@ function getNextIndex() {
     });
 }
 
-function getSessionByAddress(address) {
+function getSessionByAddressOwner(address) {
     return new Promise<any>((resolve, reject) => {
         db.get(
             'SELECT * FROM sessions WHERE address = ?',
@@ -317,10 +317,32 @@ function getSessionByAddress(address) {
     });
 }
 
+function getSessionByAddressDeposit(address) {
+    return new Promise<any>((resolve, reject) => {
+        db.get(
+            'SELECT * FROM sessions WHERE depositAddress = ?',
+            [address],
+            function (err, row) {
+                if (err) {
+                    console.error('Error retrieving session by address:', err.message);
+                    reject(err);
+                } else {
+                    if (row) {
+                        resolve(row);
+                    } else {
+                        resolve(null);
+                    }
+                }
+            }
+        );
+    });
+}
+
 // Export the functions
 module.exports = {
     storeSession,
-    getSessionByAddress,
+    getSessionByAddressDeposit,
+    getSessionByAddressOwner,
     getSession,
     updateSession,
     deleteSession,

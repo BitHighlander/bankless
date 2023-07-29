@@ -244,14 +244,36 @@ export class IndexController extends Controller {
         }
     }
 
-    @Get('/session/:address')
-    public async getSessionByAddress(address: string) {
-        const tag = TAG + ' | getSessionByAddress | ';
+    @Get('/session/byOnwer/:address')
+    public async getSessionByAddressOwner(address: string) {
+        const tag = TAG + ' | getSessionByAddressOwner | ';
         try {
             log.info(tag, 'Fetching session with address:', address);
 
             // Assuming Bankless.sessions(limit, skip) fetches sessions with the specified limit and skip values
-            const sessions = await Bankless.getSessionByAddress(address);
+            const sessions = await Bankless.getSessionByAddressOwner(address);
+
+            // Return the fetched sessions
+            return sessions;
+        } catch (e) {
+            const errorResp: Error = {
+                success: false,
+                tag,
+                e,
+            };
+            log.error(tag, 'e: ', { errorResp });
+            throw new ApiError('error', 503, 'Error while fetching sessions: ' + e.toString());
+        }
+    }
+
+    @Get('/session/byDeposit/:address')
+    public async getSessionByAddressDeposit(address: string) {
+        const tag = TAG + ' | getSessionByAddressDeposit | ';
+        try {
+            log.info(tag, 'Fetching session with address:', address);
+
+            // Assuming Bankless.sessions(limit, skip) fetches sessions with the specified limit and skip values
+            const sessions = await Bankless.getSessionByAddressDeposit(address);
 
             // Return the fetched sessions
             return sessions;
