@@ -606,6 +606,8 @@ let onStart = async function (){
                         let fullfill = await fullfill_order(session.sessionId)
                         log.info(tag,"fullfill: ",fullfill)
                         session.txid = fullfill
+                        // @ts-ignore
+                        session.actionId = event.payload.actionId
                         clientEvents.send('message', session)
                     }
                 }
