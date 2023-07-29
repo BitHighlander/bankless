@@ -63,7 +63,7 @@ const Onramp = () => {
 
   return (
     <Grid textAlign="center" gap={2}>
-      <h2>{Number(status.rate).toFixed(2)} DAI/USD | <Button colorScheme='teal' onClick={clearSession}>end session</Button> | {(1 / Number(status.rate)).toFixed(2)} USD/DAI</h2>
+      <h2>{Number(status.rate).toFixed(2)} USD/DAI | <Button colorScheme='teal' onClick={clearSession}>end session</Button> | {(1 / Number(status.rate)).toFixed(2)} DAI/USD</h2>
     </Grid>
   );
 };

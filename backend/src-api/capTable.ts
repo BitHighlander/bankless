@@ -1,3 +1,4 @@
+const TAG = " | CapTable | ";
 import axios from 'axios';
 const SspLib = require('@keepkey/encrypted-smiley-secure-protocol');
 const uuid = require('short-uuid');
@@ -9,7 +10,6 @@ const database = require('./database');
 let wait = require('wait-promise');
 let sleep = wait.sleep;
 
-const TAG = " | Bankless-Backend | ";
 let PROTOCOL_1PCT = "0x651982e85D5E43db682cD6153488083e1b810798";
 
 let ATM_OWNER = process.env['ATM_OWNER'];
@@ -118,10 +118,13 @@ function calculateValueByOwner(): { address: string; valueUSD: number; valueDAI:
 }
 
 async function init_cap(): Promise<void> {
+    let tag = TAG+" | init_cap | "
     try {
         CAP_TABLE = await database.getAllCapEntries();
 
         if (CAP_TABLE.length === 0) {
+            log.info(tag,"TOTAL_USD:    ",TOTAL_USD)
+            log.info(tag,"TOTAL_DAI:    ",TOTAL_DAI)
             const totalLPTokens = calculateTotalLPTokens(TOTAL_USD, TOTAL_DAI);
             const ownershipPercentage = 100;
             TOTAL_LP_TOKENS = totalLPTokens;

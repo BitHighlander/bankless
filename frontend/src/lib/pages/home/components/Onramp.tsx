@@ -26,7 +26,7 @@ const qr = new EthereumQRPlugin();
 const socket = io("ws://127.0.0.1:4000");
 
 // @ts-ignore
-const Onramp = ({ setLockTabs }) => {
+const Onramp = ({ sessionId, setLockTabs }) => {
   const [sliderValue, setSliderValue] = React.useState(5)
   const [showTooltip, setShowTooltip] = React.useState(false)
   const [isConnected, setIsConnected] = useState(socket.connected);
@@ -56,8 +56,11 @@ const Onramp = ({ setLockTabs }) => {
       // const scannedAddress = paymentParams.to;
       // console.log("scannedAddress: ",scannedAddress)
       const ethAddressRegex = /0x[0-9a-fA-F]{40}/; // Regular expression to match Ethereum address pattern
+      // @ts-ignore
       const extractedAddress = data.text.match(ethAddressRegex)?.[0] || ""; // Extract the Ethereum address from the string
-      setAddress(extractedAddress);
+      if (extractedAddress) {
+        setAddress(extractedAddress);
+      }
     }
   };
 
@@ -119,19 +122,19 @@ const Onramp = ({ setLockTabs }) => {
       console.log("address: ",address)
 
       console.log("body: ", body);
-      let submitResp = await axios.post(
+      let submitRespCreate = await axios.post(
           "http://127.0.0.1:4000/api/v1/create/buy",
           body
       );
-      submitResp = submitResp.data
+      submitRespCreate = submitRespCreate.data
       // eslint-disable-next-line no-console
-      console.log("submitResp: ", submitResp);
+      console.log("submitRespCreate: ", submitRespCreate);
       setLockTabs(true)
       // console.log("sessionId: ", submitResp.sessionId);
       // console.log("setSessionId: ", setSessionId);
       // setSessionId(submitResp.sessionId);
       // @ts-ignore
-      if(submitResp.type === 'buy'){
+      if(submitRespCreate.type === 'buy'){
         // @ts-ignore
         setSessionTypeSelected(true)
       }
@@ -183,13 +186,12 @@ const Onramp = ({ setLockTabs }) => {
         sessionId:"test"
       };
       console.log("address: ",address)
-      let submitResp = await axios.post(
+      let submitRespFullfill = await axios.post(
           "http://127.0.0.1:4000/api/v1/fullfill",
           body
       );
-      submitResp = submitResp.data
-      // eslint-disable-next-line no-console
-      console.log("submitResp: ", submitResp);
+      submitRespFullfill = submitRespFullfill.data
+      console.log("submitRespFullfill: ", submitRespFullfill);
 
       setSending(true)
     } catch (e) {
@@ -225,7 +227,7 @@ const Onramp = ({ setLockTabs }) => {
 
   const isError = false;
 
-  const handleQuote = async function (v) {
+  const handleQuote = async function (v: any) {
     try {
       // eslint-disable-next-line no-console
       console.log("quote: ",v);
@@ -331,7 +333,8 @@ const Onramp = ({ setLockTabs }) => {
               <QrReader
                   delay={500}
                   onError={handleError}
-                  onResult={handleScan}></QrReader>
+                  onResult={handleScan}>
+              </QrReader>
             </div>
           </FormControl>
         </div>
