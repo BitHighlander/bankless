@@ -39,7 +39,6 @@ const Buy = ({ sessionId, setLockTabs }) => {
   const [usd, setUsd] = useState("");
   const [qrString, setQrString] = useState("");
 
-
     useEffect(() => {
         socket.on("connect", () => {
             setIsConnected(true);

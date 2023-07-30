@@ -8,6 +8,7 @@ let specPioneer = "http://127.0.0.1:9001/spec/swagger.json"
 //https://pioneers.dev/spec/swagger.json
 let signer = require("eth_mnemonic_signer")
 let mnemonic = process.env['WALLET_MAIN']
+const assert = require("assert")
 
 const config = {
     queryKey:"test"
@@ -34,6 +35,12 @@ const runTest = async () => {
         let address = await signer.getAddress(mnemonic)
         log.info(tag,"address: ",address)
 
+        //filter by address
+        let myCap = statusPre.cap.filter((c)=>{return c.address === address})
+        log.info(tag,"myCap: ",myCap)
+        assert(myCap)
+        assert(myCap[0])
+        assert(myCap[0].lpTokens > 0)
         let payload = `{"type": "lpWithrawAsym", "amount": "${amount.toString()}"}`;
         log.info(tag,'payload: ', payload);
         payload = JSON.stringify(payload)

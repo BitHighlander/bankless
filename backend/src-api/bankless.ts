@@ -38,7 +38,9 @@ import {
     QUERY_KEY,
     NO_BROADCAST,
     WALLET_FAKE_PAYMENTS,
-    WALLET_FAKE_BALANCES,
+    WALLET_FAKE_BALANCES_DAI,
+    WALLET_FAKE_BALANCES_CASH,
+    WALLET_ROTATE_ADDRESSES,
     ATM_NO_HARDWARE,
     USB_CONNECTION,
     DAI_CONTRACT,
@@ -69,7 +71,7 @@ let ALL_BILLS = {
     "50":  0,
     "100":  0,
 }
-if(WALLET_FAKE_BALANCES) {
+if(WALLET_FAKE_BALANCES_CASH) {
     ALL_BILLS["100"] = 12
     ALL_BILLS["50"] = 10
     ALL_BILLS["20"] = 11
@@ -80,8 +82,8 @@ if(WALLET_FAKE_BALANCES) {
 
 let TOTAL_CASH = 0
 let TOTAL_DAI = 0
-if(WALLET_FAKE_BALANCES) {
-    TOTAL_DAI = 2000
+if(WALLET_FAKE_BALANCES_DAI) {
+    TOTAL_DAI = 200
 }
 let totalCash = 0;
 Object.keys(ALL_BILLS).forEach(key => {
@@ -361,6 +363,7 @@ let countBills = async function(){
 let accept_payment = async function(payment:any){
     let tag = TAG + " | accept_payment | "
     try{
+        log.info(tag,"payment: ",payment)
         let txid = payment.tx.txid
         let from = payment.tx.tokenTransfers[0].from
         let to = payment.tx.tokenTransfers[0].to.toLowerCase()
@@ -407,87 +410,6 @@ let accept_payment = async function(payment:any){
         } else {
             log.error(tag,"no session found for payement: unable to process",to)
         }
-
-        //let first start
-        // let firstStart = true
-        // let isScanning = true
-        // while(isScanning){
-        //     log.debug(tag,"scanning...")
-        //     let url = "https://indexer.ethereum.shapeshift.com"+"/api/v2/address/"+address+"?details=all"
-        //     let body = {
-        //         method: 'GET',
-        //         url,
-        //         headers: {
-        //             'content-type': 'application/json'
-        //         },
-        //     };
-        //     try{
-        //         let resp = await axios(body)
-        //         if(!resp.data) return
-        //         if(!resp.data.txids) return
-        //         let txids = resp.data.txids
-        //         for(let i = 0; i < txids.length; i++){
-        //             let txid = txids[i]
-        //             //log.debug("txid: ",txid)
-        //             if(CURRENT_SESSION && !TXIDS_REVIEWED.some(e => e.txid === txid)){
-        //                 let url = "https://indexer.ethereum.shapeshift.com"+"/api/v2/tx/"+txid
-        //                 let body = {
-        //                     method: 'GET',
-        //                     url,
-        //                     headers: {
-        //                         'content-type': 'application/json'
-        //                     },
-        //                 };
-        //                 let respTx = await axios(body)
-        //                 let paymentAmountDai = 0
-        //                 for(let i = 0; i < respTx.data.tokenTransfers.length; i++){
-        //                     let transfer = respTx.data.tokenTransfers[i]
-        //                     if(transfer["symbol"] == "DAI" && transfer.contract.toLowerCase() === DAI_CONTRACT){
-        //                         paymentAmountDai = parseInt(transfer.value) / 1000000000000000000
-        //                         CURRENT_SESSION.SESSION_FUNDING_DAI = (CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0) + paymentAmountDai
-        //                     }
-        //                 }
-        //                 log.debug("paymentAmountDai: ",paymentAmountDai)
-        //                 log.debug("SESSION_FUNDING_DAI: ",CURRENT_SESSION.SESSION_FUNDING_DAI)
-        //                 let payment = {
-        //                     txid:txids[i],
-        //                     asset:"DAI",
-        //                     session:CURRENT_SESSION.sessionId,
-        //                     amount:paymentAmountDai,
-        //                     funded:true,
-        //                     fullfilled:false
-        //                 }
-        //                 TXIDS_REVIEWED.push(payment)
-        //                 //Payment found!
-        //                 publisher.publish("payments",JSON.stringify(payment))
-        //                 fullfill_order(CURRENT_SESSION.sessionId)
-        //             } else if(!TXIDS_REVIEWED.some(e => e.txid === txid) && !firstStart){
-        //                 log.debug(tag,"payment outside session!")
-        //                 log.debug(tag,"payment: !")
-        //                 let payment = {
-        //                     txid:txids[i],
-        //                     session:"none",
-        //                     status:"missed"
-        //                 }
-        //                 TXIDS_REVIEWED.push(payment)
-        //             } else if(firstStart){
-        //                 let payment = {
-        //                     txid:txids[i],
-        //                     session:"none",
-        //                     status:"ignored"
-        //                 }
-        //                 TXIDS_REVIEWED.push(payment)
-        //             }
-        //         }
-        //
-        //
-        //         firstStart = false
-        //         await sleep(3000)
-        //     }catch(e){
-        //         log.info(tag,"unable to scan, trying again")
-        //         await sleep(3000)
-        //     }
-        // }
     }catch(e){
         log.error(e)
     }
@@ -581,12 +503,17 @@ let onStart = async function (){
                 
                 //create new address for session
 
-                if(event.payload && event.payload.type == "lpAddAsym" || event.payload.type == "lpAddSym"){
+                if(event.payload && event.payload.type == "lpAdd" || event.payload.type == "lpAddAsym"){
                     if(!event.payload.address) throw Error("invalid session proposial! required address of LP owner!")
                     let sessionId = uuid.generate()
                     log.info(tag,"sessionId: ",sessionId)
-                    let address =  await get_new_address(sessionId)
-                    log.info(tag,"address: ",address)
+                    let address
+                    if(WALLET_ROTATE_ADDRESSES){
+                        address =  await get_new_address(sessionId)
+                        log.info(tag,"address: ",address)    
+                    }else{
+                        address = await signer.getAddress(WALLET_MAIN)
+                    }
                     //save session
                     let payload = event.payload
                     payload.sessionId = sessionId
@@ -746,6 +673,18 @@ module.exports = {
     poolInfo: async function () {
         return get_pool_info();
     },
+    quoteBuy: async function (amount:string) {
+        return "TODO";
+    },
+    quoteSell: async function (amount:string) {
+        return "TODO";
+    },
+    quoteLpAdd: async function (amount:string) {
+        return "TODO";
+    },
+    quoteLpRemove: async function (address:string,amount:string) {
+        return "TODO";
+    },
     getSession: async function (sessionId:string) {
         return database.getSession(sessionId);
     },
@@ -885,8 +824,8 @@ let onStartSession = async function(){
         //console.log("input: balanceBN: ",balanceBN)
         // @ts-ignore
         let tokenBalance = parseInt(balanceBN/Math.pow(10, decimals))
-        if(!WALLET_FAKE_BALANCES){
-            TOTAL_DAI = await tokenBalance
+        if(!WALLET_FAKE_BALANCES_DAI){
+            TOTAL_DAI = tokenBalance
         }
 
         //@TODO get fullfilled from DB
@@ -997,7 +936,7 @@ let fullfill_order = async function (sessionId:string) {
             amountOut = parseInt(amountOut.toString())
             log.info(tag,"amountOut (rounded): ",amountOut)
             let txid = await payout_cash(amountOut.toString())
-            if(WALLET_FAKE_BALANCES){
+            if(WALLET_FAKE_BALANCES_CASH){
                 log.info("dispensing fake bills!")
                 //algo large to small
                 let isDespensing = true
