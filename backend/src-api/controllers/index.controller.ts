@@ -437,8 +437,13 @@ export class IndexController extends Controller {
             // if(!body.amount) throw Error("missing amount!")
             // if(!body.asset) throw Error("missing asset!")
             // if(!body.sessionId) throw Error("missing sessionId!")
+            let result
+            if(ALLOW_HACK){
+                result = await Bankless.pushPayment(body)                
+            } else {
+                result = "(Production) nerfed"
+            }
 
-            let result = await Bankless.pushPayment(body)
             return result
         } catch(e){
             let errorResp:Error = {

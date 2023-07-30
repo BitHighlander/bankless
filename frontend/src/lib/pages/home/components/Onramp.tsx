@@ -248,7 +248,7 @@ const Onramp = ({ sessionId, setLockTabs }) => {
 
   return (
     <Grid textAlign="center" gap={2}>
-      OnRamp to DAI
+      Buy DAI
       {sessionTypeSelected ? (
         <div>
           {sending ? (<div>
@@ -309,26 +309,6 @@ const Onramp = ({ sessionId, setLockTabs }) => {
       ) : (
         <div>
           <FormControl isInvalid={isError}>
-            <FormLabel>Address</FormLabel>
-            <Input
-              type="email"
-              value={address}
-              onChange={handleInputChangeAddress}
-            />
-            {!isError ? (
-              <FormHelperText>Enter your address</FormHelperText>
-            ) : (
-              <FormErrorMessage>address is required.</FormErrorMessage>
-            )}
-            <Button
-              mt={4}
-              colorScheme="teal"
-              // isLoading={props.isSubmitting}
-              type="submit"
-              onClick={onSubmit}
-            >
-              Continue
-            </Button>
             <div style={{width: "500px", margin: "auto"}}>
               <QrReader
                   delay={500}
@@ -336,6 +316,26 @@ const Onramp = ({ sessionId, setLockTabs }) => {
                   onResult={handleScan}>
               </QrReader>
             </div>
+            <FormLabel>Address</FormLabel>
+            <Input
+                type="email"
+                value={address}
+                onChange={handleInputChangeAddress}
+            />
+            {!isError ? (
+                <FormHelperText>Enter your address</FormHelperText>
+            ) : (
+                <FormErrorMessage>address is required.</FormErrorMessage>
+            )}
+            <Button
+                colorScheme="teal"
+                // isLoading={props.isSubmitting}
+                type="submit"
+                size={"sm"}
+                onClick={onSubmit}
+            >
+              Continue
+            </Button>
           </FormControl>
         </div>
       )}

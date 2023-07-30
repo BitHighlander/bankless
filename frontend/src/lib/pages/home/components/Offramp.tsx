@@ -422,7 +422,7 @@ const Buy = ({ sessionId, setLockTabs }) => {
                   type='submit'
                   onClick={onSubmit}
               >
-                  Deposit
+                  Withdrawal
               </Button>
           </div>)}
       </div>
