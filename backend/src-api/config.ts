@@ -19,8 +19,17 @@ if (WALLET_FAKE_PAYMENTS) console.log("WALLET_FAKE_PAYMENTS: will NOT pay crypto
 export const WALLET_FAKE_BALANCES = process.env['WALLET_FAKE_BALANCES'];
 if (WALLET_FAKE_BALANCES) console.log("WALLET_FAKE_BALANCES: will FAKE BALANCES!");
 
+export const WALLET_FAKE_BALANCES_DAI = process.env['WALLET_FAKE_BALANCES_DAI'];
+if (WALLET_FAKE_BALANCES_DAI) console.log("WALLET_FAKE_BALANCES_DAI: will FAKE BALANCES!");
+
+export const WALLET_FAKE_BALANCES_CASH = process.env['WALLET_FAKE_BALANCES_CASH'];
+if (WALLET_FAKE_BALANCES_CASH) console.log("WALLET_FAKE_BALANCES_CASH: will FAKE BALANCES!");
+
 export const ATM_NO_HARDWARE = process.env['ATM_NO_HARDWARE'];
 if (ATM_NO_HARDWARE) console.log("ATM_NO_HARDWARE: not attempting hardware!");
+
+export const WALLET_ROTATE_ADDRESSES = process.env['WALLET_ROTATE_ADDRESSES'];
+if (WALLET_ROTATE_ADDRESSES) console.log("WALLET_ROTATE_ADDRESSES: wallet will give each user a new address and sweep!");
 
 export const USB_CONNECTION = process.env['USB_CONNECTION'];
 if (!USB_CONNECTION) console.log("USB_CONNECTION: REQUIRED!");

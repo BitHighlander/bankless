@@ -253,7 +253,7 @@ const Onramp = ({ sessionId, setLockTabs }) => {
         <div>
           {sending ? (<div>
                 {sent ? (<div>
-                  sent: txid: {txid} <br/>
+                  sent: txid: https://etherscan.io/tx/{txid} <br/>
                   </div>) : (<div>
                   <Spinner />
                 </div>)}
