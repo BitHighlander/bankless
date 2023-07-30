@@ -5,8 +5,14 @@ import {
   TabList,
   TabPanels,
   TabPanel,
-  Button
+  Button,
+  Image,
+    Avatar,
+    Flex
 } from "@chakra-ui/react";
+//images
+import daiImage from 'lib/assets/dai.png';
+import dollarsImage from 'lib/assets/dollars.png';
 
 import Onramp from "./components/Onramp";
 import Offramp from "./components/Offramp";
@@ -60,12 +66,17 @@ const Home = () => {
     <Grid gap={4} >
       {started ? (<div>
           {/*<Session />*/}
+          <Flex justifyContent="center" alignItems="center">
         <Tabs size='lg' variant='solid-rounded'>
           <TabList>
-              <Tab isDisabled={lockTabs}>Onramp</Tab>
-              <Tab isDisabled={lockTabs}>Offramp</Tab>
+              <Tab isDisabled={lockTabs}>Buy Crypto
+                  <Avatar src={daiImage} name="DAI" size="sm" mr={2} />
+              </Tab>
+              <Tab isDisabled={lockTabs}>Withdraw Cash
+                  <Avatar src={dollarsImage} name="Dollars" size="sm" mr={2} />
+              </Tab>
               {/*<Tab isDisabled={lockTabs}>LP</Tab>*/}
-              <Tab isDisabled={lockTabs}>Status</Tab>
+              {/*<Tab isDisabled={lockTabs}>Status</Tab>*/}
           </TabList>
 
           <TabPanels>
@@ -78,15 +89,16 @@ const Home = () => {
               {/*<TabPanel>*/}
               {/*    <LP setLockTabs={setLockTabs} />*/}
               {/*</TabPanel>*/}
-              <TabPanel>
-                  <Status />
-              </TabPanel>
+              {/*<TabPanel>*/}
+              {/*    <Status />*/}
+              {/*</TabPanel>*/}
           </TabPanels>
         </Tabs>
+          </Flex>
       </div>) : (
-          <div>
-        <Button colorScheme='green' size='lg' alignSelf="center" onClick={startSession}>Start</Button>
-      </div>
+          <Flex justifyContent="center" alignItems="center">
+              <Button colorScheme='green' size='lg' alignSelf="center" onClick={startSession}>Start</Button>
+          </Flex>
       )}
       {/*<Button onClick={() => setShowStats(!showStats)}>show stats</Button>*/}
       {/*{showStats ? (<div><Status /></div>) : null}*/}

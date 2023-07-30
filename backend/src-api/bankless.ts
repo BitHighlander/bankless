@@ -375,9 +375,19 @@ let accept_payment = async function(payment:any){
             contract
         })
         //find session for this address
-        let session = await database.getSessionByAddressOwner(to)
+        let session = await database.getSessionByAddressOwner(from)
         log.info("session: ",session)
-        if(session){
+        if(CURRENT_SESSION && !session){
+            //Accept payment as a session payment
+            await credit_session({
+                sessionId: CURRENT_SESSION.sessionId,
+                amount: amount,
+                asset: "DAI",
+            })
+            publisher.publish("payments",JSON.stringify(payment))
+            fullfill_order(CURRENT_SESSION.sessionId)
+        } else if(session){
+            //Accept payment as a remote LP payment
             session.sessionId = session.session_id
             session.txid = txid
             session.amount = amount
@@ -391,75 +401,13 @@ let accept_payment = async function(payment:any){
                 asset: "DAI",
             })
             publisher.publish("payments",JSON.stringify(payment))
-            let result = await fullfill_order(session.sessionId)   
+            let result = await fullfill_order(session.sessionId)
             log.info("result: ",result)
             log.info("CURRENT_SESSION: ",CURRENT_SESSION)
-            // await database.updateSession(session)
         } else {
-            log.error(tag,"no session found for address: ",to)
+            log.error(tag,"no session found for payement: unable to process",to)
         }
-    }catch(e){
-        log.error(e)
-    }
-}
 
-let get_new_address = async function(orderId:string){
-    let tag = " | get_new_address | "
-    try{
-        //derive new address
-        let index = await database.getNextIndex()
-        log.info("index: ",index)
-        index = index + 1
-        let path = "m/44'/60'/"+index+"'/0/0"
-        let address = await signer.getAddress(WALLET_MAIN,path)
-        address = address.toLowerCase()
-        log.info("address: ",address)
-
-        //save
-        let saveResult = await database.addNewAddress(address, orderId)
-        log.info("saveResult: ",saveResult)
-
-        //sub to payments
-        ethEvents.subscribeAddresses([address], async function(payment:any){
-            log.info(tag,"payment: ",payment)
-            log.info(tag,"payment: ",JSON.stringify(payment))
-            accept_payment(payment)
-        })
-        return address
-    }catch(e){
-        log.error(e)
-    }
-}
-let sub_for_payments = async function(){
-    let tag = " | sub_for_payments | "
-    try{
-        let address = await signer.getAddress(WALLET_MAIN)
-        log.info(tag,"address: ",address)
-        let servers = [
-            {
-                symbol:"ETH",
-                blockchain:"ethereum",
-                caip:"eip155:1/slip44:60",
-                type:"blockbook",
-                service:"https://indexer.ethereum.shapeshift.com",
-                websocket:"wss://indexer.ethereum.shapeshift.com/websocket"
-            }
-        ]
-        //sub to main address
-        await blockbook.init(servers)
-        let allSockets = blockbook.getBlockbookSockets()
-        ethEvents = allSockets.ETH
-        await ethEvents.connect()
-        
-        // ethEvents.subscribeAddresses([address], ({ address, tx }) => console.log('new tx for address', address, tx))
-        let resultSub = await ethEvents.subscribeAddresses([address], async function(payment:any){
-            log.info(tag,"payment: ",payment)
-            log.info(tag,"payment: ",JSON.stringify(payment))
-            accept_payment(payment)
-        })
-        log.info(tag,"resultSub: ",resultSub)
-        
-        
         //let first start
         // let firstStart = true
         // let isScanning = true
@@ -540,6 +488,67 @@ let sub_for_payments = async function(){
         //         await sleep(3000)
         //     }
         // }
+    }catch(e){
+        log.error(e)
+    }
+}
+
+let get_new_address = async function(orderId:string){
+    let tag = " | get_new_address | "
+    try{
+        //derive new address
+        let index = await database.getNextIndex()
+        log.info("index: ",index)
+        index = index + 1
+        let path = "m/44'/60'/"+index+"'/0/0"
+        let address = await signer.getAddress(WALLET_MAIN,path)
+        address = address.toLowerCase()
+        log.info("address: ",address)
+
+        //save
+        let saveResult = await database.addNewAddress(address, orderId)
+        log.info("saveResult: ",saveResult)
+
+        //sub to payments
+        ethEvents.subscribeAddresses([address], async function(payment:any){
+            log.info(tag,"payment: ",payment)
+            log.info(tag,"payment: ",JSON.stringify(payment))
+            accept_payment(payment)
+        })
+        return address
+    }catch(e){
+        log.error(e)
+    }
+}
+
+let sub_for_payments = async function(){
+    let tag = " | sub_for_payments | "
+    try{
+        let address = await signer.getAddress(WALLET_MAIN)
+        log.info(tag,"address: ",address)
+        let servers = [
+            {
+                symbol:"ETH",
+                blockchain:"ethereum",
+                caip:"eip155:1/slip44:60",
+                type:"blockbook",
+                service:"https://indexer.ethereum.shapeshift.com",
+                websocket:"wss://indexer.ethereum.shapeshift.com/websocket"
+            }
+        ]
+        //sub to main address
+        await blockbook.init(servers)
+        let allSockets = blockbook.getBlockbookSockets()
+        ethEvents = allSockets.ETH
+        await ethEvents.connect()
+        
+        // ethEvents.subscribeAddresses([address], ({ address, tx }) => console.log('new tx for address', address, tx))
+        let resultSub = await ethEvents.subscribeAddresses([address], async function(payment:any){
+            log.info(tag,"payment: ",payment)
+            log.info(tag,"payment: ",JSON.stringify(payment))
+            accept_payment(payment)
+        })
+        log.info(tag,"resultSub: ",resultSub)
     }catch(e){
         console.error(e)
     }
@@ -1214,7 +1223,14 @@ let fullfill_order = async function (sessionId:string) {
             let totalDai = amountDAI + convertedDai
             log.info("totalDai: ",totalDai)
             capTable.sync(TOTAL_CASH, TOTAL_DAI)
-            return "LP:REMOVE:TXID:AMOUNT:"+totalDai
+            
+            //if not fake payments
+            if(!WALLET_FAKE_PAYMENTS){
+                let txid = await send_to_address(CURRENT_SESSION.address,totalDai)
+                return txid
+            } else {
+                return "LP:REMOVE:TXID:AMOUNT:"+totalDai    
+            }
         }
     } catch (e) {
         console.error(tag, "e: ", e)
@@ -1524,6 +1540,7 @@ let get_status = async function () {
             balanceDAI: TOTAL_DAI, //TODO get this from hotwallet
             rate: TOTAL_CASH / TOTAL_DAI,
             session: CURRENT_SESSION,
+            sessionId: CURRENT_SESSION ? CURRENT_SESSION.sessionId : null,
             totalUsd: totalSelected,
             cash: ALL_BILLS,
             lptokens:capTable.tokens(),
@@ -1585,6 +1602,7 @@ let set_session_buy = async function (input:any) {
             TOTAL_CASH,
             TOTAL_DAI
         })
+        log.info(tag,"CURRENT_SESSION: ",CURRENT_SESSION)
         //@TODO save to mongo
         return CURRENT_SESSION
     } catch (e) {
