@@ -503,7 +503,7 @@ let onStart = async function (){
                 
                 //create new address for session
 
-                if(event.payload && event.payload.type == "lpAdd" || event.payload.type == "lpAddAsym"){
+                if(event && event.payload && event.payload.type == "lpAddAsym"){
                     if(!event.payload.address) throw Error("invalid session proposial! required address of LP owner!")
                     let sessionId = uuid.generate()
                     log.info(tag,"sessionId: ",sessionId)
@@ -524,7 +524,7 @@ let onStart = async function (){
                     if(!payload.address) throw Error("Failed to generate address!")
                     clientEvents.send('message', payload)
                 }
-                if(event.payload && event.payload.type == "lpWithdrawAsym" || event.payload.type == "lpWithdraw"){
+                if(event && event.payload && event.payload.type == "lpWithdraw"){
                     log.info(tag,"lpWithdrawAsym: ")
                     if(!event.payload.address) throw Error("invalid session proposial! required address of LP owner!")
                     let session = await database.getSessionByAddressOwner(event.payload.address)
