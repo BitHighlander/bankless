@@ -1397,23 +1397,36 @@ let send_to_address = async function (address:string,amount:number) {
             return "NERFED!-nobroadcast"
         }else{
             //broadcast
-            WEB3.eth.sendSignedTransaction(result)
-                .once('transactionHash', function(hash){
-                    //console.log("txHash", hash)
-                    CURRENT_SESSION.txid = hash
-                    publisher.publish("payments",JSON.stringify({txid:hash,session:CURRENT_SESSION,type:'fullfill'}))
-                    return hash
-                })
-                .once('receipt', function(receipt){ log.debug("receipt", receipt) })
-                .on('confirmation', function(confNumber, receipt){
-                    if(confNumber === 1){
-                        CURRENT_SESSION.status = 'fullfilled'
-                        console.log("confNumber",confNumber,"receipt",receipt) }
-                })
-                .on('error', function(error){ log.error("error", error) })
-                .then(function(receipt){
-                    console.log("trasaction mined!", receipt);
-                });
+            try {
+                WEB3.eth.sendSignedTransaction(result)
+                    .once('transactionHash', function (hash) {
+                        //console.log("txHash", hash)
+                        CURRENT_SESSION.txid = hash
+                        publisher.publish("payments", JSON.stringify({
+                            txid: hash,
+                            session: CURRENT_SESSION,
+                            type: 'fullfill'
+                        }))
+                        return hash
+                    })
+                    .once('receipt', function (receipt) {
+                        log.debug("receipt", receipt)
+                    })
+                    .on('confirmation', function (confNumber, receipt) {
+                        if (confNumber === 1) {
+                            CURRENT_SESSION.status = 'fullfilled'
+                            console.log("confNumber", confNumber, "receipt", receipt)
+                        }
+                    })
+                    .on('error', function (error) {
+                        log.error("error", error)
+                    })
+                    .then(function (receipt) {
+                        console.log("trasaction mined!", receipt);
+                    });
+            } catch (e){
+                log.error(tag, e)
+            }
         }
 
         // log.debug("txHash: ",txHash)
