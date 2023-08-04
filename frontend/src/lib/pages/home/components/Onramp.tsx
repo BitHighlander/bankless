@@ -20,6 +20,7 @@ import { Spinner } from '@chakra-ui/react'
 // @ts-ignore
 import EthereumQRPlugin from "@dri/ethereum-qr-code";
 import { QrReader } from 'react-qr-reader';
+import QrCodeGen from "qrcode.react";
 // later in code
 const qr = new EthereumQRPlugin();
 
@@ -254,7 +255,9 @@ const Onramp = ({ sessionId, setLockTabs }) => {
           {sending ? (<div>
                 {sent ? (<div>
                   sent: txid: https://etherscan.io/tx/{txid} <br/>
-                  </div>) : (<div>
+                      <QrCodeGen value={`https://etherscan.io/tx/${txid}`} size={256} />
+                  </div>
+                    ) : (<div>
                   <Spinner />
                 </div>)}
           </div>) : (<div>
