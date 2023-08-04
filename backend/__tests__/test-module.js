@@ -23,7 +23,7 @@ let run_test = async () => {
 
         //hit fake endpoint
         const bodyFund = {
-            amount:"10"
+            amount:"3"
         };
         console.log("bodyFund: ",bodyFund)
         let respFund = await axios.post(

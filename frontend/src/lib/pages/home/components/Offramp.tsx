@@ -8,9 +8,8 @@ import QRCode from 'qrcode.react';
 
 const socket = io("ws://127.0.0.1:4000");
 
-
 // @ts-ignore
-const Buy = ({ sessionId, setSessionId, setLockTabs }) => {
+const Buy = ({ sessionId, setLockTabs }) => {
   const [isConnected, setIsConnected] = useState(socket.connected);
   const [availableOnes, setAvailableOnes] = useState(0);
   const [availableFives, setAvailableFives] = useState(0);
@@ -39,7 +38,6 @@ const Buy = ({ sessionId, setSessionId, setLockTabs }) => {
   const [qrcode, setQrcode] = useState({});
   const [usd, setUsd] = useState("");
   const [qrString, setQrString] = useState("");
-
 
     useEffect(() => {
         socket.on("connect", () => {
@@ -316,6 +314,7 @@ const Buy = ({ sessionId, setSessionId, setLockTabs }) => {
           {readyForDeposit ? (<div>
             <table style={{textAlign: "left"}}>
                 <tr><th>Address</th><td>{address}</td></tr>
+                <tr><th>SessionId</th><td>{sessionId}</td></tr>
                 <tr><th>Cash to be purchased</th><td>${Number(amountOut).toFixed(2)}</td></tr>
                 <tr><th>DAI to deposit</th><td>{(Math.ceil(Number(amountIn) * 100) / 100).toFixed(2)}</td></tr>
             </table>
@@ -422,7 +421,7 @@ const Buy = ({ sessionId, setSessionId, setLockTabs }) => {
                   type='submit'
                   onClick={onSubmit}
               >
-                  Deposit
+                  Withdrawal
               </Button>
           </div>)}
       </div>

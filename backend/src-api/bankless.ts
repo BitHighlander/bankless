@@ -11,102 +11,49 @@
 */
 
 const TAG = " | Bankless-Backend | "
+import { OrderTypes, Status, BuyOrder, SellOrder, LP } from './types';
 import axios from 'axios';
 const SspLib = require('@keepkey/encrypted-smiley-secure-protocol')
 const uuid = require('short-uuid');
 const log = require('@pioneer-platform/loggerdog')();
 const {subscriber, publisher, redis, redisQueue} = require('@pioneer-platform/default-redis')
+const database = require('./database');
 var geoip2 = require('geoip2-lite');
 let signer = require("eth_mnemonic_signer")
 let os = require("os")
 const Pioneer = require("@pioneer-platform/pioneer-client").default;
 import {getIPAddress} from "./utils"
 let Events = require("@pioneer-platform/pioneer-events")
+let blockbook = require("@pioneer-platform/blockbook")
 let capTable = require('./capTable')
 const fs = require('fs');
-
 let wait = require('wait-promise');
 let sleep = wait.sleep;
-
-let PIONEER_WS = process.env['PIONEER_WS'] || "wss://pioneers.dev"
-let URL_PIONEER_SPEC = process.env['URL_PIONEER_SPEC'] || "https://pioneers.dev/spec/swagger.json"
-
-let WALLET_MAIN = process.env['WALLET_MAIN']
-if(!WALLET_MAIN) throw Error("Missing WALLET_MAIN from ENV!")
-
-let TERMINAL_NAME = process.env['TERMINAL_NAME']
-if(!TERMINAL_NAME) throw Error("TERMINAL_NAME is required!")
-
-let QUERY_KEY = process.env['QUERY_KEY']
-if(!QUERY_KEY) throw Error("QUERY_KEY is required!")
-
-let NO_BROADCAST = process.env['WALLET_NO_BROADCAST']
-if(NO_BROADCAST) log.debug(" NERFED! wallet will not send crypto!")
-
-let WALLET_FAKE_PAYMENTS = process.env['WALLET_FAKE_PAYMENTS']
-if(WALLET_FAKE_PAYMENTS) log.debug(" WALLET_FAKE_PAYMENTS: will NOT pay crypto!")
-
-let WALLET_FAKE_BALANCES = process.env['WALLET_FAKE_BALANCES']
-if(WALLET_FAKE_BALANCES) log.debug(" WALLET_FAKE_BALANCES: will FAKE BALANCES!")
-
-let ATM_NO_HARDWARE = process.env['ATM_NO_HARDWARE']
-if(ATM_NO_HARDWARE) log.debug(" ATM_NO_HARDWARE: not attempting hardwware!")
-
-let USB_CONNECTION = process.env['USB_CONNECTION']
-if(!USB_CONNECTION) log.debug("USB_CONNECTION: REQUIRED!")
-
-// order types
-enum OrderTypes {
-    Buy,
-    Sell,
-    LP
-}
-
-enum Status {
-    created,
-    funded,
-    fullfilled ,
-}
-
-interface buyOrder {
-    orderId: string,
-    type: OrderTypes,
-    amountIn: number,
-    amountOut: number,
-    txid?: string,
-    assetId: string,
-    status: Status,
-}
-
-interface sellOrder {
-    orderId: string,
-    type: OrderTypes,
-    amountIn: number,
-    amountOut: number,
-    txid?: string,
-    assetId: string,
-    status: Status,
-}
-
-interface lp {
-    orderId: string,
-    type: OrderTypes,
-    amountFiat: number,
-    amountCrypto: number,
-    assetId: string,
-    status: Status,
-}
+//global config
+import {
+    PIONEER_WS,
+    URL_PIONEER_SPEC,
+    WALLET_MAIN,
+    TERMINAL_NAME,
+    QUERY_KEY,
+    NO_BROADCAST,
+    WALLET_FAKE_PAYMENTS,
+    WALLET_FAKE_BALANCES_DAI,
+    WALLET_FAKE_BALANCES_CASH,
+    WALLET_ROTATE_ADDRESSES,
+    ATM_NO_HARDWARE,
+    USB_CONNECTION,
+    DAI_CONTRACT,
+    service
+} from './config';
 
 //STATE @TODO move this to DB?
 let balanceUSD = 0
 let balanceDAI = 0
 let currentSession:any //@TODO session must use session Types
 
-
 const Web3 = require("web3")
-let service = "https://mainnet.infura.io/v3/fb05c87983c4431baafd4600fd33de7e"
 let WEB3 = new Web3(new Web3.providers.HttpProvider(service))
-let DAI_CONTRACT = "0x6b175474e89094c44da98b954eedeac495271d0f"
 
 //pioneer
 let pioneer:any
@@ -124,7 +71,7 @@ let ALL_BILLS = {
     "50":  0,
     "100":  0,
 }
-if(WALLET_FAKE_BALANCES) {
+if(WALLET_FAKE_BALANCES_CASH) {
     ALL_BILLS["100"] = 12
     ALL_BILLS["50"] = 10
     ALL_BILLS["20"] = 11
@@ -135,8 +82,8 @@ if(WALLET_FAKE_BALANCES) {
 
 let TOTAL_CASH = 0
 let TOTAL_DAI = 0
-if(WALLET_FAKE_BALANCES) {
-    TOTAL_DAI = 2000
+if(WALLET_FAKE_BALANCES_DAI) {
+    TOTAL_DAI = 200
 }
 let totalCash = 0;
 Object.keys(ALL_BILLS).forEach(key => {
@@ -144,7 +91,10 @@ Object.keys(ALL_BILLS).forEach(key => {
 });
 TOTAL_CASH = totalCash
 capTable.sync(TOTAL_CASH, TOTAL_DAI)
-capTable.init()
+
+
+//
+let ethEvents
 
 //Global Session id. every time we shut down we audit reserves and create a new session!
 let GLOBAL_SESSION = "unset"
@@ -410,93 +360,117 @@ let countBills = async function(){
     }
 }
 
+let accept_payment = async function(payment:any){
+    let tag = TAG + " | accept_payment | "
+    try{
+        log.info(tag,"payment: ",payment)
+        let txid = payment.tx.txid
+        let from = payment.tx.tokenTransfers[0].from
+        let to = payment.tx.tokenTransfers[0].to.toLowerCase()
+        let amount = payment.tx.tokenTransfers[0].value / 10**18
+        let contract = payment.tx.tokenTransfers[0].contract
+        if(contract.toLowerCase() !== DAI_CONTRACT)throw Error("Incorrect token!")
+        log.info(tag,"params: ",{
+            txid,
+            from,
+            to,
+            amount,
+            contract
+        })
+        //find session for this address
+        let session = await database.getSessionByAddressOwner(from)
+        log.info("session: ",session)
+        if(CURRENT_SESSION && !session){
+            //Accept payment as a session payment
+            await credit_session({
+                sessionId: CURRENT_SESSION.sessionId,
+                amount: amount,
+                asset: "DAI",
+            })
+            publisher.publish("payments",JSON.stringify(payment))
+            fullfill_order(CURRENT_SESSION.sessionId)
+        } else if(session){
+            //Accept payment as a remote LP payment
+            session.sessionId = session.session_id
+            session.txid = txid
+            session.amount = amount
+            session.amountIn = amount
+            // await database.updateSession(session)
+            CURRENT_SESSION = session
+            log.info("CURRENT_SESSION: ",CURRENT_SESSION)
+            await credit_session({
+                sessionId: session.sessionId,
+                amount: amount,
+                asset: "DAI",
+            })
+            publisher.publish("payments",JSON.stringify(payment))
+            let result = await fullfill_order(session.sessionId)
+            log.info("result: ",result)
+            log.info("CURRENT_SESSION: ",CURRENT_SESSION)
+        } else {
+            log.error(tag,"no session found for payement: unable to process",to)
+        }
+    }catch(e){
+        log.error(e)
+    }
+}
+
+let get_new_address = async function(orderId:string){
+    let tag = " | get_new_address | "
+    try{
+        //derive new address
+        let index = await database.getNextIndex()
+        log.info("index: ",index)
+        index = index + 1
+        let path = "m/44'/60'/"+index+"'/0/0"
+        let address = await signer.getAddress(WALLET_MAIN,path)
+        address = address.toLowerCase()
+        log.info("address: ",address)
+
+        //save
+        let saveResult = await database.addNewAddress(address, orderId)
+        log.info("saveResult: ",saveResult)
+
+        //sub to payments
+        ethEvents.subscribeAddresses([address], async function(payment:any){
+            log.info(tag,"payment: ",payment)
+            log.info(tag,"payment: ",JSON.stringify(payment))
+            accept_payment(payment)
+        })
+        return address
+    }catch(e){
+        log.error(e)
+    }
+}
+
 let sub_for_payments = async function(){
     let tag = " | sub_for_payments | "
     try{
         let address = await signer.getAddress(WALLET_MAIN)
-        log.debug(tag,"address: ",address)
-
-        //let first start
-        let firstStart = true
-        let isScanning = true
-        while(isScanning){
-            log.debug(tag,"scanning...")
-            let url = "https://indexer.ethereum.shapeshift.com"+"/api/v2/address/"+address+"?details=all"
-            let body = {
-                method: 'GET',
-                url,
-                headers: {
-                    'content-type': 'application/json'
-                },
-            };
-            try{
-                let resp = await axios(body)
-                if(!resp.data) return
-                if(!resp.data.txids) return
-                let txids = resp.data.txids
-                for(let i = 0; i < txids.length; i++){
-                    let txid = txids[i]
-                    //log.debug("txid: ",txid)
-                    if(CURRENT_SESSION && !TXIDS_REVIEWED.some(e => e.txid === txid)){
-                        let url = "https://indexer.ethereum.shapeshift.com"+"/api/v2/tx/"+txid
-                        let body = {
-                            method: 'GET',
-                            url,
-                            headers: {
-                                'content-type': 'application/json'
-                            },
-                        };
-                        let respTx = await axios(body)
-                        let paymentAmountDai = 0
-                        for(let i = 0; i < respTx.data.tokenTransfers.length; i++){
-                            let transfer = respTx.data.tokenTransfers[i]
-                            if(transfer["symbol"] == "DAI" && transfer.contract.toLowerCase() === DAI_CONTRACT){
-                                paymentAmountDai = parseInt(transfer.value) / 1000000000000000000
-                                CURRENT_SESSION.SESSION_FUNDING_DAI = (CURRENT_SESSION.SESSION_FUNDING_DAI ?? 0) + paymentAmountDai
-                            }
-                        }
-                        log.debug("paymentAmountDai: ",paymentAmountDai)
-                        log.debug("SESSION_FUNDING_DAI: ",CURRENT_SESSION.SESSION_FUNDING_DAI)
-                        let payment = {
-                            txid:txids[i],
-                            asset:"DAI",
-                            session:CURRENT_SESSION.sessionId,
-                            amount:paymentAmountDai,
-                            funded:true,
-                            fullfilled:false
-                        }
-                        TXIDS_REVIEWED.push(payment)
-                        //Payment found!
-                        publisher.publish("payments",JSON.stringify(payment))
-                        fullfill_order(CURRENT_SESSION.sessionId)
-                    } else if(!TXIDS_REVIEWED.some(e => e.txid === txid) && !firstStart){
-                        log.debug(tag,"payment outside session!")
-                        log.debug(tag,"payment: !")
-                        let payment = {
-                            txid:txids[i],
-                            session:"none",
-                            status:"missed"
-                        }
-                        TXIDS_REVIEWED.push(payment)
-                    } else if(firstStart){
-                        let payment = {
-                            txid:txids[i],
-                            session:"none",
-                            status:"ignored"
-                        }
-                        TXIDS_REVIEWED.push(payment)
-                    }
-                }
-
-
-                firstStart = false
-                await sleep(3000)
-            }catch(e){
-                log.info(tag,"unable to scan, trying again")
-                await sleep(3000)
+        log.info(tag,"address: ",address)
+        let servers = [
+            {
+                symbol:"ETH",
+                blockchain:"ethereum",
+                caip:"eip155:1/slip44:60",
+                type:"blockbook",
+                service:"https://indexer.ethereum.shapeshift.com",
+                websocket:"wss://indexer.ethereum.shapeshift.com/websocket"
             }
-
-        }
+        ]
+        //sub to main address
+        await blockbook.init(servers)
+        let allSockets = blockbook.getBlockbookSockets()
+        ethEvents = allSockets.ETH
+        await ethEvents.connect()
+        
+        // ethEvents.subscribeAddresses([address], ({ address, tx }) => console.log('new tx for address', address, tx))
+        let resultSub = await ethEvents.subscribeAddresses([address], async function(payment:any){
+            log.info(tag,"payment: ",payment)
+            log.info(tag,"payment: ",JSON.stringify(payment))
+            accept_payment(payment)
+        })
+        log.info(tag,"resultSub: ",resultSub)
     }catch(e){
         console.error(e)
     }
@@ -525,25 +499,54 @@ let onStart = async function (){
             let tag = TAG + " | events | "
             try{
                 // log.debug(tag,"event: ",event)
-                // log.debug(tag,"event: ",event.payload)
-                if(event.payload && event.payload.type == "lpAddAsym"){
+                log.info(tag,"event: ",event.payload)
+                
+                //create new address for session
+
+                if(event.payload && event.payload.type == "lpAdd" || event.payload.type == "lpAddAsym"){
                     if(!event.payload.address) throw Error("invalid session proposial! required address of LP owner!")
-                    let session = await set_session_lp_add_asym(event.payload)
-                    log.debug(tag,"session: ",session)
+                    let sessionId = uuid.generate()
+                    log.info(tag,"sessionId: ",sessionId)
+                    let address
+                    if(WALLET_ROTATE_ADDRESSES){
+                        address =  await get_new_address(sessionId)
+                        log.info(tag,"address: ",address)    
+                    }else{
+                        address = await signer.getAddress(WALLET_MAIN)
+                    }
+                    //save session
                     let payload = event.payload
-                    log.debug(tag,"payload: ",payload)
-                    payload.sessionId = session.sessionId
-                    payload.address = await signer.getAddress(WALLET_MAIN)
+                    payload.sessionId = sessionId
+                    payload.owner = event.payload.address
+                    payload.depositAddress = address
+                    let storeSuccess = await database.storeSession(sessionId,payload)
+                    log.info(tag,"storeSuccess: ",storeSuccess)
+                    if(!payload.address) throw Error("Failed to generate address!")
                     clientEvents.send('message', payload)
-                }else if(event.type == "lpWithdrawAsym"){
-                    let session = await set_session_lp_withdraw_asym(event.payload)
-                    log.debug(tag,"session: ",session)
-                    let payload = event.payload
-                    log.debug(tag,"payload: ",payload)
-                    payload.sessionId = session.sessionId
-                    payload.address = await signer.getAddress(WALLET_MAIN)
-                    clientEvents.send('message', payload)
-                }    
+                }
+                if(event.payload && event.payload.type == "lpWithdrawAsym" || event.payload.type == "lpWithdraw"){
+                    log.info(tag,"lpWithdrawAsym: ")
+                    if(!event.payload.address) throw Error("invalid session proposial! required address of LP owner!")
+                    let session = await database.getSessionByAddressOwner(event.payload.address)
+                    log.info(tag,"session: ",session)
+                    if(session){
+                        let input = {
+                            address:event.payload.address,
+                            amount:event.payload.amount
+                        }
+                        let session = await set_session_lp_withdraw_asym(input)
+                        log.info(tag,"session: ",session)
+                        //TODO validate signature
+                        
+                        //fullfill
+                        let fullfill = await fullfill_order(session.sessionId)
+                        log.info(tag,"fullfill: ",fullfill)
+                        session.txid = fullfill
+                        // @ts-ignore
+                        session.actionId = event.payload.actionId
+                        clientEvents.send('message', session)
+                    }
+                }
             }catch(e){
                 log.error(e)
             }
@@ -566,7 +569,7 @@ let onStart = async function (){
         pioneer = new Pioneer(configPioneer.spec, configPioneer);
         pioneer = await pioneer.init();
         let terminalInfo = await pioneer.TerminalPrivate({terminalName:TERMINAL_NAME})
-        log.info(tag,"terminalInfo: ",terminalInfo.data)
+        log.debug(tag,"terminalInfo: ",terminalInfo.data)
         //check total cash
         let totalCash = 0;
         Object.keys(ALL_BILLS).forEach(key => {
@@ -670,6 +673,30 @@ module.exports = {
     poolInfo: async function () {
         return get_pool_info();
     },
+    quoteBuy: async function (amount:string) {
+        return "TODO";
+    },
+    quoteSell: async function (amount:string) {
+        return "TODO";
+    },
+    quoteLpAdd: async function (amount:string) {
+        return "TODO";
+    },
+    quoteLpRemove: async function (address:string,amount:string) {
+        return "TODO";
+    },
+    getSession: async function (sessionId:string) {
+        return database.getSession(sessionId);
+    },
+    getSessions: async function (limit:number,skip:number) {
+        return database.getAllSessions(limit,skip);
+    },
+    getSessionByAddressDeposit: async function (address:string) {
+        return database.getSessionByAddressDeposit(address);
+    },
+    getSessionByAddressOwner: async function (address:string) {
+        return database.getSessionByAddressOwner(address);
+    },
     startSession: async function (input:any) {
         return start_session(input);
     },
@@ -693,6 +720,9 @@ module.exports = {
     },
     credit: async function (input:any) {
         return credit_session(input);
+    },
+    pushPayment: async function (payment:any) {
+        return accept_payment(payment);
     },
     payments: async function () {
         return TXIDS_REVIEWED;
@@ -794,8 +824,8 @@ let onStartSession = async function(){
         //console.log("input: balanceBN: ",balanceBN)
         // @ts-ignore
         let tokenBalance = parseInt(balanceBN/Math.pow(10, decimals))
-        if(!WALLET_FAKE_BALANCES){
-            TOTAL_DAI = await tokenBalance
+        if(!WALLET_FAKE_BALANCES_DAI){
+            TOTAL_DAI = tokenBalance
         }
 
         //@TODO get fullfilled from DB
@@ -806,17 +836,17 @@ let onStartSession = async function(){
         //@TODO if diff record it
 
         //start session
-        log.debug(tag,"TOTAL_CASH: ",TOTAL_CASH)
-        log.debug(tag,"TOTAL_DAI: ",TOTAL_DAI)
+        log.info(tag,"TOTAL_CASH: ",TOTAL_CASH)
+        log.info(tag,"TOTAL_DAI: ",TOTAL_DAI)
 
         //get LP owners
 
-
+        capTable.sync(TOTAL_CASH, TOTAL_DAI)
+        capTable.init()
     }catch(e){
         console.error(e)
     }
 }
-onStartSession()
 
 //@TODO move me to module
 //debit bills
@@ -906,7 +936,7 @@ let fullfill_order = async function (sessionId:string) {
             amountOut = parseInt(amountOut.toString())
             log.info(tag,"amountOut (rounded): ",amountOut)
             let txid = await payout_cash(amountOut.toString())
-            if(WALLET_FAKE_BALANCES){
+            if(WALLET_FAKE_BALANCES_CASH){
                 log.info("dispensing fake bills!")
                 //algo large to small
                 let isDespensing = true
@@ -1132,7 +1162,14 @@ let fullfill_order = async function (sessionId:string) {
             let totalDai = amountDAI + convertedDai
             log.info("totalDai: ",totalDai)
             capTable.sync(TOTAL_CASH, TOTAL_DAI)
-            return "LP:REMOVE:TXID:AMOUNT:"+totalDai
+            
+            //if not fake payments
+            if(!WALLET_FAKE_PAYMENTS){
+                let txid = await send_to_address(CURRENT_SESSION.address,totalDai)
+                return txid
+            } else {
+                return "LP:REMOVE:TXID:AMOUNT:"+totalDai    
+            }
         }
     } catch (e) {
         console.error(tag, "e: ", e)
@@ -1251,15 +1288,15 @@ const credit_session = async function (input) {
 let payout_cash = async function (amount:string) {
     let tag = TAG + " | payout_cash | "
     try {
-        log.debug(tag,"Paying out cash!: ",amount)
+        log.info(tag,"Paying out cash!: ",amount)
         if(NO_BROADCAST){
             log.debug("NO_BROADCAST set not paying")
             return "paied bro"
         } else{
             amount = amount.toString()
             if(amount === "0") amount = "1" //@TODO WTF WTY
-            log.debug("paying out cash: ",amount)
-            log.debug("paying out cash: ",typeof(amount))
+            log.debug(tag,"paying out cash: ",amount)
+            log.debug(tag,"paying out cash: ",typeof(amount))
 
             //verify
             if(!ATM_NO_HARDWARE){
@@ -1269,7 +1306,7 @@ let payout_cash = async function (amount:string) {
                     country_code: 'USD',
                     test: false,
                 })
-                log.debug("result: ",result)
+                log.info(tag,"result: ",result)
                 await dispensed    
             }
         }
@@ -1360,23 +1397,36 @@ let send_to_address = async function (address:string,amount:number) {
             return "NERFED!-nobroadcast"
         }else{
             //broadcast
-            WEB3.eth.sendSignedTransaction(result)
-                .once('transactionHash', function(hash){
-                    //console.log("txHash", hash)
-                    CURRENT_SESSION.txid = hash
-                    publisher.publish("payments",JSON.stringify({txid:hash,session:CURRENT_SESSION,type:'fullfill'}))
-                    return hash
-                })
-                .once('receipt', function(receipt){ log.debug("receipt", receipt) })
-                .on('confirmation', function(confNumber, receipt){
-                    if(confNumber === 1){
-                        CURRENT_SESSION.status = 'fullfilled'
-                        console.log("confNumber",confNumber,"receipt",receipt) }
-                })
-                .on('error', function(error){ log.error("error", error) })
-                .then(function(receipt){
-                    console.log("trasaction mined!", receipt);
-                });
+            try {
+                WEB3.eth.sendSignedTransaction(result)
+                    .once('transactionHash', function (hash) {
+                        //console.log("txHash", hash)
+                        CURRENT_SESSION.txid = hash
+                        publisher.publish("payments", JSON.stringify({
+                            txid: hash,
+                            session: CURRENT_SESSION,
+                            type: 'fullfill'
+                        }))
+                        return hash
+                    })
+                    .once('receipt', function (receipt) {
+                        log.debug("receipt", receipt)
+                    })
+                    .on('confirmation', function (confNumber, receipt) {
+                        if (confNumber === 1) {
+                            CURRENT_SESSION.status = 'fullfilled'
+                            console.log("confNumber", confNumber, "receipt", receipt)
+                        }
+                    })
+                    .on('error', function (error) {
+                        log.error("error", error)
+                    })
+                    .then(function (receipt) {
+                        console.log("trasaction mined!", receipt);
+                    });
+            } catch (e){
+                log.error(tag, e)
+            }
         }
 
         // log.debug("txHash: ",txHash)
@@ -1434,12 +1484,15 @@ let get_status = async function () {
         });
         let cap = await capTable.get()
         let output:any = {
+            terminalName: TERMINAL_NAME,
             billacceptor: ACCEPTOR_ONLINE ? "online" : "offline",
             hotwallet:"online",
+            address: await signer.getAddress(WALLET_MAIN),
             balanceUSD: totalSelected, //TODO get this from hardware
             balanceDAI: TOTAL_DAI, //TODO get this from hotwallet
             rate: TOTAL_CASH / TOTAL_DAI,
             session: CURRENT_SESSION,
+            sessionId: CURRENT_SESSION ? CURRENT_SESSION.sessionId : null,
             totalUsd: totalSelected,
             cash: ALL_BILLS,
             lptokens:capTable.tokens(),
@@ -1501,6 +1554,7 @@ let set_session_buy = async function (input:any) {
             TOTAL_CASH,
             TOTAL_DAI
         })
+        log.info(tag,"CURRENT_SESSION: ",CURRENT_SESSION)
         //@TODO save to mongo
         return CURRENT_SESSION
     } catch (e) {

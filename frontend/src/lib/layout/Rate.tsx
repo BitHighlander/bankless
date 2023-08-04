@@ -3,20 +3,18 @@ import axios from "axios";
 import React, { useEffect } from "react";
 
 const Onramp = () => {
-  const [status, setStatus] = React.useState({
-    rate: "...",
-    sessionId: "...",
-  });
-  const [sessionId, setSessionId] = React.useState(null);
+  const [sessionId, setSessionId] = React.useState("...");
+  const [rate, setRate] = React.useState("...");
   
   const clearSession = async function () {
     try {
+      window.location.reload();
       // eslint-disable-next-line no-console
       console.log("onDone: ");
       const status = await axios.get(
           "http://localhost:4000/api/v1/" + "status"
       );
-      setStatus(status.data);
+      setSessionId("");
       if(status.data.sessionId){
         //fullfill
         const body = {
@@ -30,8 +28,6 @@ const Onramp = () => {
         // eslint-disable-next-line no-console
         console.log("submitResp: ", submitResp);
       }
-
-      window.location.reload();
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error(e);
@@ -44,9 +40,11 @@ const Onramp = () => {
       const status = await axios.get(
         "http://localhost:4000/api/v1/" + "status"
       );
-      setStatus(status.data);
       if(status.data.sessionId){
-        setStatus(status.data.sessionId);
+        setSessionId(status.data.sessionId);
+      }
+      if(status.data.rate){
+        setRate(status.data.rate);
       }
       // eslint-disable-next-line no-console
       console.log("status: ", status.data);
@@ -63,7 +61,7 @@ const Onramp = () => {
 
   return (
     <Grid textAlign="center" gap={2}>
-      <h2>{Number(status.rate).toFixed(2)} DAI/USD | <Button colorScheme='teal' onClick={clearSession}>end session</Button> | {(1 / Number(status.rate)).toFixed(2)} USD/DAI</h2>
+      <h2>{Number(rate).toFixed(2)} USD/DAI | <Button colorScheme='teal' onClick={clearSession}>end session</Button> | {(1 / Number(rate)).toFixed(2)} DAI/USD</h2>
     </Grid>
   );
 };

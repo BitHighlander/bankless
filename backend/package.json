@@ -15,6 +15,7 @@
   "dependencies": {
     "@dri/ethereum-qr-code": "^0.3.0",
     "@keepkey/encrypted-smiley-secure-protocol": "0.0.13",
+    "@pioneer-platform/blockbook": "^8.1.53",
     "@pioneer-platform/default-redis": "^8.1.17",
     "@pioneer-platform/loggerdog": "^8.1.18",
     "@pioneer-platform/pioneer-client": "^9.0.11",
