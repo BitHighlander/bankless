@@ -270,9 +270,9 @@ let onStartAcceptor = async function(){
         for (let i = 0; i < channels.length; i++) {
             const channel = channels[i]
             // @TODO: country code check
-            // if (payoutDenoms.includes(channel.value)) {
-            //     await eSSP.command('SET_DENOMINATION_ROUTE', {route: 'payout', value: channel.value, country_code: channel.country_code})
-            // }
+            if (payoutDenoms.includes(channel.value)) {
+                await eSSP.command('SET_DENOMINATION_ROUTE', {route: 'payout', value: channel.value, country_code: channel.country_code})
+            }
         }
 
         log.info(tag,'checking routes')
